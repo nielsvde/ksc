@@ -316,6 +316,7 @@
       justify-content: center;
       align-items: center;
       gap: 6px;
+      transition: background 0.2s ease;
     }
 
     .btn-play {
@@ -323,14 +324,23 @@
       color: white;
     }
 
+    /* Oranje achtergrond en witte tekst bij Pauze */
     .btn-play.paused {
       background: #f97316;
-      color: white;
+      color: #ffffff;
     }
 
     .btn-stop {
       background: #dc2626;
       color: white;
+    }
+
+    /* Zorg voor strakke 2 witte streepjes in de pauze-knop */
+    .pause-icon {
+      font-style: normal;
+      font-weight: bold;
+      letter-spacing: 1px;
+      color: #ffffff;
     }
   </style>
 </head>
@@ -352,7 +362,7 @@
       <button class="btn-action" onclick="pasteFromClipboard('spotifyUrl')">Plak 📋</button>
     </div>
 
-    <button class="btn-main" onclick="processLink()">Genereer & Open Direct →</button>
+    <button class="btn-main" onclick="processLink()">Download MP3 📥</button>
 
     <button class="btn-main" onclick="window.open('https://vocalremover.org/next/nl/', '_blank')">
       Open VocalRemover AI Splitter ✂️
@@ -805,12 +815,12 @@ Plak een Spotify-link bovenaan bij Stap 2 of vul bij Stap 1 een zoekterm in en k
       if (audioMusic.paused && audioVocal.paused) {
         audioMusic.play().catch(()=>{});
         audioVocal.play().catch(()=>{});
-        btnPlayPause.innerText = "⏸ Pauze";
+        btnPlayPause.innerHTML = '<i class="pause-icon">║</i> Pauze';
         btnPlayPause.classList.add("paused");
       } else {
         audioMusic.pause();
         audioVocal.pause();
-        btnPlayPause.innerText = "▶ Afspelen";
+        btnPlayPause.innerHTML = "▶ Afspelen";
         btnPlayPause.classList.remove("paused");
       }
     }
@@ -820,7 +830,7 @@ Plak een Spotify-link bovenaan bij Stap 2 of vul bij Stap 1 een zoekterm in en k
       audioMusic.currentTime = 0;
       audioVocal.pause();
       audioVocal.currentTime = 0;
-      btnPlayPause.innerText = "▶ Afspelen";
+      btnPlayPause.innerHTML = "▶ Afspelen";
       btnPlayPause.classList.remove("paused");
     }
 
