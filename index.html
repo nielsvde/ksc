@@ -138,7 +138,7 @@
       color: #94a3b8;
       line-height: 1.4;
       white-space: pre-wrap;
-      max-height: 200px;
+      max-height: 220px;
       overflow-y: auto;
     }
 
@@ -260,6 +260,9 @@ Plak een Spotify-link of voer een titel in om de songtekst direct op te halen.
   </div>
 
   <script>
+    let currentLyrics = "";
+    let currentFileName = "songtekst.lrc";
+
     // --- Blok 1 ---
     function searchSpotify() {
       const q = document.getElementById('searchQuery').value.trim();
@@ -381,13 +384,13 @@ Plak een Spotify-link of voer een titel in om de songtekst direct op te halen.
       return new Blob([buffer], { type: "audio/wav" });
     }
 
-    // --- Blok 3: LRCLIB API Integratie (Ondersteunt Spotify URLs en Tekst) ---
+    // --- Blok 3: LRCLIB API Integratie (Ondersteunt Spotify URLs & Fallback Search) ---
     async function fetchLyricsDirect() {
-      const query = document.getElementById('lyricsQuery').value.trim();
+      const rawInput = document.getElementById('lyricsQuery').value.trim();
       const resultBox = document.getElementById('lyricsResult');
       const btn = document.getElementById('lyricsBtn');
 
-      if (!query) {
+      if (!rawInput) {
         alert('Voer een artiest/nummer in of plak een Spotify link.');
         return;
       }
@@ -395,40 +398,77 @@ Plak een Spotify-link of voer een titel in om de songtekst direct op te halen.
       btn.disabled = true;
       resultBox.innerHTML = `<b style="color:#38bdf8;">⏳ Zoeken...</b> Songtekst wordt opgehaald.`;
 
+      // Maak Spotify link schoon en haal ID op
+      const match = rawInput.match(/track\/([a-zA-Z0-9]+)/);
+      const trackId = match ? match[1] : null;
+
       try {
-        let url = '';
-        const match = query.match(/track\/([a-zA-Z0-9]+)/);
+        let item = null;
 
-        if (match && match[1]) {
-          // Als het een Spotify link is, zoek op Spotify Track ID
-          url = `https://lrclib.net/api/get-by-spotify-id/${match[1]}`;
+        // Poging 1: Probeer via Spotify ID als het een link is
+        if (trackId) {
+          try {
+            const res = await fetch(`https://lrclib.net/api/get-by-spotify-id/${trackId}`);
+            if (res.ok) item = await res.json();
+          } catch (e) {
+            console.log("Spotify ID direct niet gevonden, overschakelen op Spotify metadata...");
+          }
+
+          // Fallback als ID niet in LRCLIB staat: haal titel op via Spotify oEmbed
+          if (!item || (!item.syncedLyrics && !item.plainLyrics)) {
+            try {
+              const metaRes = await fetch(`https://open.spotify.com/oembed?url=https://open.spotify.com/track/${trackId}`);
+              if (metaRes.ok) {
+                const meta = await metaRes.json();
+                const cleanQuery = meta.title; // bijv. "Artiest - Nummer"
+                const searchRes = await fetch(`https://lrclib.net/api/search?q=${encodeURIComponent(cleanQuery)}`);
+                if (searchRes.ok) {
+                  const searchData = await searchRes.json();
+                  if (searchData && searchData.length > 0) item = searchData[0];
+                }
+              }
+            } catch (e) {
+              console.log("Fallback mislukt");
+            }
+          }
         } else {
-          // Anders gewoon zoeken op tekst
-          url = `https://lrclib.net/api/search?q=${encodeURIComponent(query)}`;
+          // Geen link: Zoek rechtstreeks op zoekterm
+          const searchRes = await fetch(`https://lrclib.net/api/search?q=${encodeURIComponent(rawInput)}`);
+          if (searchRes.ok) {
+            const searchData = await searchRes.json();
+            if (searchData && searchData.length > 0) item = searchData[0];
+          }
         }
-
-        const response = await fetch(url);
-
-        if (!response.ok) {
-          throw new Error("Niet gevonden");
-        }
-
-        const data = await response.json();
-
-        // Verwerk resultaat (get-by-spotify-id geeft 1 object terug, search een array)
-        const item = Array.isArray(data) ? data[0] : data;
 
         if (item && (item.syncedLyrics || item.plainLyrics)) {
-          const lyrics = item.syncedLyrics || item.plainLyrics;
-          resultBox.innerText = `🎵 ${item.artistName} - ${item.trackName}\n\n${lyrics}`;
+          currentLyrics = item.syncedLyrics || item.plainLyrics;
+          currentFileName = `${item.artistName} - ${item.trackName}.lrc`.replace(/[/\\?%*:|"<>]/g, '');
+
+          resultBox.innerHTML = `
+            <b style="color:#4ade80;">✓ Gevonden!</b><br>
+            <b>🎵 ${item.artistName} - ${item.trackName}</b><br><br>
+            <button class="btn-secondary" onclick="downloadLrcFile()" style="margin-bottom: 12px; border-color: #1db954; color: #1db954;">
+              Download .LRC Bestand 💾
+            </button>
+            <div style="font-family: monospace; font-size: 11px; white-space: pre-wrap;">${currentLyrics}</div>
+          `;
         } else {
-          resultBox.innerHTML = `<b style="color:#ef4444;">Niet gevonden:</b> Geen songtekst aangetroffen in de database. Probeer een zoekterm zoals "Artiest - Nummer".`;
+          resultBox.innerHTML = `<b style="color:#ef4444;">Niet gevonden:</b> Geen songtekst aangetroffen in de database voor deze track.`;
         }
       } catch (err) {
-        resultBox.innerHTML = `<b style="color:#ef4444;">Niet gevonden:</b> Geen match voor deze Spotify-link of zoekopdracht. Probeer een gewone zoekterm (bijv. Flemming - Automatisch).`;
+        resultBox.innerHTML = `<b style="color:#ef4444;">Fout:</b> Er ging iets mis bij het ophalen van de songtekst.`;
       } finally {
         btn.disabled = false;
       }
+    }
+
+    function downloadLrcFile() {
+      if (!currentLyrics) return;
+      const blob = new Blob([currentLyrics], { type: "text/plain;charset=utf-8" });
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = currentFileName;
+      a.click();
     }
   </script>
 </body>
