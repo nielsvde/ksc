@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Spotisaver & AI MP3 Splitter</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.min.js"></script>
   <style>
     * {
       box-sizing: border-box;
@@ -42,7 +43,14 @@
       background: linear-gradient(135deg, #a78bfa 0%, #c084fc 100%);
       -webkit-background-clip: text;
       -webkit-text-fill-color: transparent;
-      margin-bottom: 18px;
+      margin-bottom: 4px;
+    }
+
+    .subtitle {
+      text-align: center;
+      font-size: 12px;
+      color: #94a3b8;
+      margin-bottom: 16px;
     }
 
     .section-title {
@@ -120,7 +128,7 @@
       margin-top: 8px;
     }
 
-    .btn-main:disabled {
+    .btn-main:disabled, .btn-secondary:disabled {
       opacity: 0.5;
       cursor: not-allowed;
     }
@@ -141,11 +149,84 @@
       max-height: 220px;
       overflow-y: auto;
     }
+
+    /* Stijlen voor Karaoke Duo Player Blok */
+    .track-picker-box {
+      background: #1a2238;
+      border: 1px solid #2e3a59;
+      border-radius: 12px;
+      padding: 10px 12px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 10px;
+    }
+
+    .track-info {
+      overflow: hidden;
+    }
+
+    .track-label {
+      font-size: 10px;
+      text-transform: uppercase;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+    }
+
+    .track-filename {
+      font-size: 12px;
+      color: #94a3b8;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: 220px;
+    }
+
+    .btn-select-file {
+      background: #2a3454;
+      color: #ffffff;
+      border: 1px solid #3b82f6;
+      border-radius: 8px;
+      padding: 6px 12px;
+      font-size: 12px;
+      cursor: pointer;
+    }
+
+    .hidden-input {
+      display: none;
+    }
+
+    .player-display {
+      background: #090d16;
+      border: 1px solid #1e293b;
+      border-radius: 14px;
+      min-height: 140px;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      padding: 16px;
+      text-align: center;
+      margin-top: 12px;
+      position: relative;
+    }
+
+    .btn-fullscreen {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      background: rgba(255,255,255,0.1);
+      border: none;
+      color: #fff;
+      font-size: 10px;
+      padding: 4px 8px;
+      border-radius: 6px;
+      cursor: pointer;
+    }
   </style>
 </head>
 <body>
 
-  <!-- Blok 1: MP3, Splitter & Songtekst Acties -->
   <div class="container">
     <h1>MP3 & Tools</h1>
 
@@ -172,7 +253,6 @@
     </button>
   </div>
 
-  <!-- Blok 2: Songtekst Resultaat -->
   <div class="container">
     <h1>Songtekst</h1>
 
@@ -184,9 +264,63 @@ Plak een Spotify-link bovenaan bij Stap 2 of vul bij Stap 1 een zoekterm in en k
     </div>
   </div>
 
+  <div class="container">
+    <h1>Karaoke Duo Player</h1>
+    <div class="subtitle">Synchronisatie per regel</div>
+
+    <div class="input-row" style="margin-bottom: 8px;">
+      <input type="text" id="packageName" value="karaoke-package" placeholder="Pakketnaam...">
+      <button class="btn-action" style="background:#3b82f6;" onclick="exportZipPackage()">📥 Export ZIP</button>
+    </div>
+
+    <button class="btn-secondary" style="margin-top: 0; margin-bottom: 14px;" onclick="document.getElementById('importZipInput').click()">
+      📤 Import ZIP
+    </button>
+    <input type="file" id="importZipInput" class="hidden-input" accept=".zip" onchange="importZipPackage(event)">
+
+    <div class="track-picker-box">
+      <div class="track-info">
+        <div class="track-label" style="color: #38bdf8;">Muziek Spoor</div>
+        <div class="track-filename" id="musicFileName">Geen bestand gekozen</div>
+      </div>
+      <button class="btn-select-file" onclick="document.getElementById('musicFileInput').click()">Kiezen</button>
+      <input type="file" id="musicFileInput" class="hidden-input" accept="audio/*" onchange="handleFileSelect(event, 'music')">
+    </div>
+
+    <div class="track-picker-box">
+      <div class="track-info">
+        <div class="track-label" style="color: #ec4899;">Zang Spoor</div>
+        <div class="track-filename" id="vocalFileName">Geen bestand gekozen</div>
+      </div>
+      <button class="btn-select-file" onclick="document.getElementById('vocalFileInput').click()">Kiezen</button>
+      <input type="file" id="vocalFileInput" class="hidden-input" accept="audio/*" onchange="handleFileSelect(event, 'vocal')">
+    </div>
+
+    <div class="track-picker-box">
+      <div class="track-info">
+        <div class="track-label" style="color: #a855f7;">Karaoke Tekst (.LRC)</div>
+        <div class="track-filename" id="lrcFileName">Geen bestand gekozen</div>
+      </div>
+      <button class="btn-select-file" onclick="document.getElementById('lrcFileInput').click()">Kiezen</button>
+      <input type="file" id="lrcFileInput" class="hidden-input" accept=".lrc,.txt" onchange="handleFileSelect(event, 'lrc')">
+    </div>
+
+    <div class="player-display">
+      <button class="btn-fullscreen" onclick="alert('Volledig scherm geactiveerd')">⛶ Volledig scherm</button>
+      <div style="color: #64748b; font-size: 13px;">Kies je audio- en tekstbestanden om te starten...</div>
+    </div>
+  </div>
+
   <script>
     let currentLyrics = "";
     let currentFileName = "songtekst.lrc";
+
+    // Opslag voor gekozen bestanden in Blok 3
+    let selectedFiles = {
+      music: null,
+      vocal: null,
+      lrc: null
+    };
 
     function searchSpotify() {
       const q = document.getElementById('searchQuery').value.trim();
@@ -235,20 +369,16 @@ Plak een Spotify-link bovenaan bij Stap 2 of vul bij Stap 1 een zoekterm in en k
         let item = null;
 
         if (trackId) {
-          // 1. Probeer op direct Spotify ID
           try {
             const res = await fetch(`https://lrclib.net/api/get-by-spotify-id/${trackId}`);
             if (res.ok) item = await res.json();
           } catch (e) {}
 
-          // 2. Als direct ID niet werkt, haal Spotify OEmbed metadata op en zoek gericht op Artiest + Nummer
           if (!item || (!item.syncedLyrics && !item.plainLyrics)) {
             try {
               const metaRes = await fetch(`https://open.spotify.com/oembed?url=https://open.spotify.com/track/${trackId}`);
               if (metaRes.ok) {
                 const meta = await metaRes.json();
-                
-                // Spotify oEmbed geeft title in formaat "Nummer - song door Artiest" of "Nummer door Artiest"
                 let title = meta.title || "";
                 let artistName = "";
                 let trackName = title;
@@ -263,20 +393,15 @@ Plak een Spotify-link bovenaan bij Stap 2 of vul bij Stap 1 een zoekterm in en k
                   artistName = parts[1].trim();
                 }
 
-                // Schoon de titel op (verwijder extra haakjes zoals (Remastered), - Radio Edit, etc.)
                 const cleanTrackName = trackName.replace(/\s*[\(\-].*$/, '').trim();
 
-                // Zoek heel specifiek op track_name en artist_name
                 let searchUrl = `https://lrclib.net/api/search?track_name=${encodeURIComponent(cleanTrackName)}`;
                 if (artistName) searchUrl += `&artist_name=${encodeURIComponent(artistName)}`;
 
                 const searchRes = await fetch(searchUrl);
                 if (searchRes.ok) {
                   const searchData = await searchRes.json();
-                  if (searchData && searchData.length > 0) {
-                    // Pak het eerste/meest accurate resultaat
-                    item = searchData[0];
-                  }
+                  if (searchData && searchData.length > 0) item = searchData[0];
                 }
               }
             } catch (e) {
@@ -284,7 +409,6 @@ Plak een Spotify-link bovenaan bij Stap 2 of vul bij Stap 1 een zoekterm in en k
             }
           }
         } else {
-          // Zoekopdracht op basis van losse tekst
           const searchRes = await fetch(`https://lrclib.net/api/search?q=${encodeURIComponent(rawInput)}`);
           if (searchRes.ok) {
             const searchData = await searchRes.json();
@@ -321,6 +445,70 @@ Plak een Spotify-link bovenaan bij Stap 2 of vul bij Stap 1 een zoekterm in en k
       a.href = URL.createObjectURL(blob);
       a.download = currentFileName;
       a.click();
+    }
+
+    // --- Blok 3: Karaoke Duo Player Functies ---
+    function handleFileSelect(event, type) {
+      const file = event.target.files[0];
+      if (!file) return;
+
+      selectedFiles[type] = file;
+      document.getElementById(`${type}FileName`).innerText = file.name;
+      document.getElementById(`${type}FileName`).style.color = "#ffffff";
+    }
+
+    async function exportZipPackage() {
+      if (!selectedFiles.music && !selectedFiles.vocal && !selectedFiles.lrc) {
+        alert("Selecteer eerst ten minste één bestand om te exporteren.");
+        return;
+      }
+
+      const zip = new JSZip();
+      const pkgName = document.getElementById('packageName').value.trim() || 'karaoke-package';
+
+      if (selectedFiles.music) zip.file(`music_${selectedFiles.music.name}`, selectedFiles.music);
+      if (selectedFiles.vocal) zip.file(`vocal_${selectedFiles.vocal.name}`, selectedFiles.vocal);
+      if (selectedFiles.lrc) zip.file(`lyrics_${selectedFiles.lrc.name}`, selectedFiles.lrc);
+
+      const content = await zip.generateAsync({ type: "blob" });
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(content);
+      a.download = `${pkgName}.zip`;
+      a.click();
+    }
+
+    async function importZipPackage(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+
+      try {
+        const zip = await JSZip.loadAsync(file);
+        
+        for (const relativePath in zip.files) {
+          const zipEntry = zip.files[relativePath];
+          if (zipEntry.dir) continue;
+
+          const blob = await zipEntry.async("blob");
+          const extractedFile = new File([blob], zipEntry.name);
+
+          if (zipEntry.name.startsWith("music_")) {
+            selectedFiles.music = extractedFile;
+            document.getElementById('musicFileName').innerText = zipEntry.name.replace("music_", "");
+            document.getElementById('musicFileName').style.color = "#ffffff";
+          } else if (zipEntry.name.startsWith("vocal_")) {
+            selectedFiles.vocal = extractedFile;
+            document.getElementById('vocalFileName').innerText = zipEntry.name.replace("vocal_", "");
+            document.getElementById('vocalFileName').style.color = "#ffffff";
+          } else if (zipEntry.name.startsWith("lyrics_")) {
+            selectedFiles.lrc = extractedFile;
+            document.getElementById('lrcFileName').innerText = zipEntry.name.replace("lyrics_", "");
+            document.getElementById('lrcFileName').style.color = "#ffffff";
+          }
+        }
+        alert("ZIP pakket succesvol geïmporteerd!");
+      } catch (e) {
+        alert("Fout bij het uitpakken van het ZIP bestand.");
+      }
     }
   </script>
 </body>
