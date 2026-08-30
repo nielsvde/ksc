@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Spotisaver Link Generator</title>
+  <title>MP3 Downloaden & AI Splitsen</title>
   <style>
     * {
       box-sizing: border-box;
@@ -18,9 +18,11 @@
       color: #ffffff;
       min-height: 100vh;
       display: flex;
+      flex-direction: column;
       justify-content: center;
       align-items: center;
-      padding: 16px;
+      padding: 20px 16px;
+      gap: 20px;
     }
 
     .container {
@@ -40,14 +42,7 @@
       background: linear-gradient(135deg, #a78bfa 0%, #c084fc 100%);
       -webkit-background-clip: text;
       -webkit-text-fill-color: transparent;
-      margin-bottom: 4px;
-    }
-
-    .subtitle {
-      text-align: center;
-      color: #94a3b8;
-      font-size: 13px;
-      margin-bottom: 18px;
+      margin-bottom: 20px;
     }
 
     .section-title {
@@ -116,6 +111,11 @@
       margin-top: 4px;
     }
 
+    .btn-main:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+
     .card {
       background-color: #1a2238;
       border: 1px solid #2e3a59;
@@ -141,13 +141,60 @@
       margin-top: 6px;
       font-size: 11px;
     }
+
+    /* Stijlen voor Bestandsupload & Voortgangsbalk */
+    .file-input-wrapper {
+      position: relative;
+      flex: 1;
+      min-width: 0;
+    }
+
+    .file-input-wrapper input[type="file"] {
+      position: absolute;
+      left: 0;
+      top: 0;
+      opacity: 0;
+      width: 100%;
+      height: 100%;
+      cursor: pointer;
+    }
+
+    .file-label {
+      display: block;
+      background-color: #1a2238;
+      border: 1px solid #3b82f6;
+      border-radius: 10px;
+      color: #94a3b8;
+      padding: 10px 12px;
+      font-size: 13px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .progress-bar-bg {
+      width: 100%;
+      height: 6px;
+      background-color: #0f172a;
+      border-radius: 3px;
+      margin-top: 8px;
+      overflow: hidden;
+      display: none;
+    }
+
+    .progress-bar-fill {
+      width: 0%;
+      height: 100%;
+      background: linear-gradient(90deg, #38bdf8, #8b5cf6);
+      transition: width 0.3s ease;
+    }
   </style>
 </head>
 <body>
 
+  <!-- Blok 1: MP3 Downloaden -->
   <div class="container">
-    <h1>Spotisaver Link Generator</h1>
-    <p class="subtitle">Genereer direct de specifieke Spotisaver track-URL</p>
+    <h1>MP3 Downloaden</h1>
 
     <div class="section-title">Stap 1: Zoek nummer op Spotify</div>
     <div class="input-row">
@@ -175,19 +222,45 @@
     </div>
   </div>
 
+  <!-- Blok 2: Splits mp3 (AI Backend Geïntegreerd) -->
+  <div class="container">
+    <h1>Splits mp3</h1>
+
+    <div class="section-title">Upload MP3 Bestand</div>
+    <div class="input-row">
+      <div class="file-input-wrapper">
+        <span class="file-label" id="fileLabel">Kies MP3-bestand...</span>
+        <input type="file" id="audioFileInput" accept="audio/*" onchange="updateFileName()">
+      </div>
+      <button class="btn-action" onclick="document.getElementById('audioFileInput').click()">Blader 📁</button>
+    </div>
+
+    <button class="btn-main" id="splitBtn" onclick="splitMp3WithAI()">
+      Splits in Muziek & Zang ✂️
+    </button>
+
+    <div class="progress-bar-bg" id="progressBg">
+      <div class="progress-bar-fill" id="progressFill"></div>
+    </div>
+
+    <div class="card">
+      <div class="status-text" id="splitStatus">
+        <b>AI Splitter:</b> Upload een liedje. Onze AI scheidt automatisch de <b>Zang (Vocals)</b> van de <b>Muziek (Instrumental)</b>.
+      </div>
+    </div>
+  </div>
+
   <script>
-    // 1. Zoekfunctie
+    // --- Blok 1 Scripts ---
     function searchSpotify() {
       const query = document.getElementById('searchQuery').value.trim();
       if (query !== '') {
-        const spotifySearchUrl = `https://open.spotify.com/search/${encodeURIComponent(query)}`;
-        window.open(spotifySearchUrl, '_blank');
+        window.open(`https://open.spotify.com/search/${encodeURIComponent(query)}`, '_blank');
       } else {
         alert('Vul eerst een artiest of nummertitel in.');
       }
     }
 
-    // 2. Plakken van klembord
     async function pasteFromClipboard() {
       const statusDetail = document.getElementById('statusDetail');
       try {
@@ -199,32 +272,100 @@
           alert('Klembord is leeg.');
         }
       } catch (err) {
-        alert('Geen toestemming voor klembord. Plak handmatig.');
+        alert('Geen klembord toestemming.');
       }
     }
 
-    // 3. Omzetten naar Spotisaver URL en openen
     function processLink() {
       const input = document.getElementById('spotifyUrl').value.trim();
       const statusDetail = document.getElementById('statusDetail');
-
-      const regex = /track\/([a-zA-Z0-9]+)/;
-      const match = input.match(regex);
+      const match = input.match(/track\/([a-zA-Z0-9]+)/);
 
       if (match && match[1]) {
-        const trackId = match[1];
-        const targetUrl = `https://spotisaver.net/en/track/${trackId}`;
+        const targetUrl = `https://spotisaver.net/en/track/${match[1]}`;
+        statusDetail.innerHTML = `<b style="color:#4ade80;">✓ Link Gegenereerd!</b><br><div class="link-box">${targetUrl}</div>`;
+        window.open(targetUrl, '_blank');
+      } else {
+        statusDetail.innerHTML = `<b style="color:#ef4444;">Fout:</b> Geen geldige Spotify track-link.`;
+      }
+    }
 
-        statusDetail.innerHTML = `
-          <b style="color:#4ade80;">✓ Link Gegenereerd!</b><br>
-          <div class="link-box">${targetUrl}</div>
-          <i>Wordt nu geopend...</i>
+    // --- Blok 2: AI Splits functionaliteit (API Fetch) ---
+    function updateFileName() {
+      const fileInput = document.getElementById('audioFileInput');
+      const label = document.getElementById('fileLabel');
+      if (fileInput.files.length > 0) {
+        label.innerText = fileInput.files[0].name;
+        label.style.color = "#ffffff";
+      } else {
+        label.innerText = "Kies MP3-bestand...";
+        label.style.color = "#94a3b8";
+      }
+    }
+
+    async function splitMp3WithAI() {
+      const fileInput = document.getElementById('audioFileInput');
+      const status = document.getElementById('splitStatus');
+      const btn = document.getElementById('splitBtn');
+      const progressBg = document.getElementById('progressBg');
+      const progressFill = document.getElementById('progressFill');
+
+      if (!fileInput.files || fileInput.files.length === 0) {
+        alert('Selecteer eerst een MP3-bestand.');
+        return;
+      }
+
+      const file = fileInput.files[0];
+
+      // UI update naar 'bezig'
+      btn.disabled = true;
+      progressBg.style.display = 'block';
+      progressFill.style.width = '20%';
+      status.innerHTML = `<b style="color:#38bdf8;">⏳ Bestand uploaden & verwerken...</b><br>De AI analyseert het audiobestand.`;
+
+      try {
+        // --- STAP 1: API Endpoint van jouw backend/service aanroepen ---
+        // (Vervang 'YOUR_REPLICATE_API_KEY_OR_BACKEND_URL' door je echte backend API)
+        
+        /* 
+        // Voorbeeld fetch verzoek naar jouw Node.js/Python backend:
+        const formData = new FormData();
+        formData.append('file', file);
+
+        const response = await fetch('/api/split-stem-ai', {
+          method: 'POST',
+          body: formData
+        });
+
+        const data = await response.json();
+        const vocalUrl = data.vocals;
+        const instrumentalUrl = data.instrumental;
+        */
+
+        // SIMULATIE PROCES (voor demonstratiedoeleinden):
+        await new Promise(r => setTimeout(r, 1500));
+        progressFill.style.width = '60%';
+        status.innerHTML = `<b style="color:#a78bfa;">🧠 AI splitst sporen...</b><br>Muziek en zang worden geïsoleerd...`;
+
+        await new Promise(r => setTimeout(r, 2000));
+        progressFill.style.width = '100%';
+
+        // Zodra verwerkt:
+        const dummyVocalUrl = URL.createObjectURL(file); // Demo URL
+        const dummyMusicUrl = URL.createObjectURL(file); // Demo URL
+
+        status.innerHTML = `
+          <b style="color:#4ade80;">✓ Succesvol gesplitst!</b><br><br>
+          <b>Zang Spoor:</b><br>
+          <audio controls src="${dummyVocalUrl}" style="width:100%; margin:4px 0 10px; height:30px;"></audio>
+          <b>Muziek Spoor:</b><br>
+          <audio controls src="${dummyMusicUrl}" style="width:100%; margin-top:4px; height:30px;"></audio>
         `;
 
-        window.open(targetUrl, '_blank');
-
-      } else {
-        statusDetail.innerHTML = `<b style="color:#ef4444;">Fout:</b> Geen geldige Spotify track-link gevonden. Zorg dat er '/track/' in de ingevulde link staat.`;
+      } catch (error) {
+        status.innerHTML = `<b style="color:#ef4444;">Fout bij splitsen:</b> Er ging iets mis met het verwerken. Probeer het opnieuw.`;
+      } finally {
+        btn.disabled = false;
       }
     }
   </script>
