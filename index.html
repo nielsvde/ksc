@@ -4,7 +4,8 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Spotisaver & AI MP3 Splitter</title>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.min.js"></script>
+  <!-- JSZip Bibliotheek voor ZIP Export -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
   <style>
     * {
       box-sizing: border-box;
@@ -43,14 +44,7 @@
       background: linear-gradient(135deg, #a78bfa 0%, #c084fc 100%);
       -webkit-background-clip: text;
       -webkit-text-fill-color: transparent;
-      margin-bottom: 4px;
-    }
-
-    .subtitle {
-      text-align: center;
-      font-size: 12px;
-      color: #94a3b8;
-      margin-bottom: 16px;
+      margin-bottom: 18px;
     }
 
     .section-title {
@@ -150,7 +144,7 @@
       overflow-y: auto;
     }
 
-    /* Stijlen voor Karaoke Duo Player Blok */
+    /* Stijlen voor Export naar ZIP Blok */
     .track-picker-box {
       background: #1a2238;
       border: 1px solid #2e3a59;
@@ -195,38 +189,11 @@
     .hidden-input {
       display: none;
     }
-
-    .player-display {
-      background: #090d16;
-      border: 1px solid #1e293b;
-      border-radius: 14px;
-      min-height: 140px;
-      display: flex;
-      flex-direction: column;
-      justify-content: center;
-      align-items: center;
-      padding: 16px;
-      text-align: center;
-      margin-top: 12px;
-      position: relative;
-    }
-
-    .btn-fullscreen {
-      position: absolute;
-      top: 10px;
-      right: 10px;
-      background: rgba(255,255,255,0.1);
-      border: none;
-      color: #fff;
-      font-size: 10px;
-      padding: 4px 8px;
-      border-radius: 6px;
-      cursor: pointer;
-    }
   </style>
 </head>
 <body>
 
+  <!-- Blok 1: MP3, Splitter & Songtekst Acties -->
   <div class="container">
     <h1>MP3 & Tools</h1>
 
@@ -253,6 +220,7 @@
     </button>
   </div>
 
+  <!-- Blok 2: Songtekst Resultaat -->
   <div class="container">
     <h1>Songtekst</h1>
 
@@ -264,20 +232,16 @@ Plak een Spotify-link bovenaan bij Stap 2 of vul bij Stap 1 een zoekterm in en k
     </div>
   </div>
 
+  <!-- Blok 3: Export naar ZIP -->
   <div class="container">
-    <h1>Karaoke Duo Player</h1>
-    <div class="subtitle">Synchronisatie per regel</div>
+    <h1>Export naar ZIP</h1>
 
-    <div class="input-row" style="margin-bottom: 8px;">
+    <div class="input-row" style="margin-bottom: 14px;">
       <input type="text" id="packageName" value="karaoke-package" placeholder="Pakketnaam...">
       <button class="btn-action" style="background:#3b82f6;" onclick="exportZipPackage()">📥 Export ZIP</button>
     </div>
 
-    <button class="btn-secondary" style="margin-top: 0; margin-bottom: 14px;" onclick="document.getElementById('importZipInput').click()">
-      📤 Import ZIP
-    </button>
-    <input type="file" id="importZipInput" class="hidden-input" accept=".zip" onchange="importZipPackage(event)">
-
+    <!-- Muziek Spoor -->
     <div class="track-picker-box">
       <div class="track-info">
         <div class="track-label" style="color: #38bdf8;">Muziek Spoor</div>
@@ -287,6 +251,7 @@ Plak een Spotify-link bovenaan bij Stap 2 of vul bij Stap 1 een zoekterm in en k
       <input type="file" id="musicFileInput" class="hidden-input" accept="audio/*" onchange="handleFileSelect(event, 'music')">
     </div>
 
+    <!-- Zang Spoor -->
     <div class="track-picker-box">
       <div class="track-info">
         <div class="track-label" style="color: #ec4899;">Zang Spoor</div>
@@ -296,6 +261,7 @@ Plak een Spotify-link bovenaan bij Stap 2 of vul bij Stap 1 een zoekterm in en k
       <input type="file" id="vocalFileInput" class="hidden-input" accept="audio/*" onchange="handleFileSelect(event, 'vocal')">
     </div>
 
+    <!-- Karaoke Tekst (.LRC) -->
     <div class="track-picker-box">
       <div class="track-info">
         <div class="track-label" style="color: #a855f7;">Karaoke Tekst (.LRC)</div>
@@ -304,18 +270,12 @@ Plak een Spotify-link bovenaan bij Stap 2 of vul bij Stap 1 een zoekterm in en k
       <button class="btn-select-file" onclick="document.getElementById('lrcFileInput').click()">Kiezen</button>
       <input type="file" id="lrcFileInput" class="hidden-input" accept=".lrc,.txt" onchange="handleFileSelect(event, 'lrc')">
     </div>
-
-    <div class="player-display">
-      <button class="btn-fullscreen" onclick="alert('Volledig scherm geactiveerd')">⛶ Volledig scherm</button>
-      <div style="color: #64748b; font-size: 13px;">Kies je audio- en tekstbestanden om te starten...</div>
-    </div>
   </div>
 
   <script>
     let currentLyrics = "";
     let currentFileName = "songtekst.lrc";
 
-    // Opslag voor gekozen bestanden in Blok 3
     let selectedFiles = {
       music: null,
       vocal: null,
@@ -418,7 +378,18 @@ Plak een Spotify-link bovenaan bij Stap 2 of vul bij Stap 1 een zoekterm in en k
 
         if (item && (item.syncedLyrics || item.plainLyrics)) {
           currentLyrics = item.syncedLyrics || item.plainLyrics;
-          currentFileName = `${item.artistName} - ${item.trackName}.lrc`.replace(/[/\\?%*:|"<>]/g, '');
+          const cleanTitle = `${item.artistName} - ${item.trackName}`.replace(/[/\\?%*:|"<>]/g, '');
+          currentFileName = `${cleanTitle}.lrc`;
+
+          // Vul de export pakketnaam automatisch in
+          document.getElementById('packageName').value = cleanTitle;
+
+          // Maak automatisch een File-object voor het karaoke tekstspoor
+          const lrcBlob = new Blob([currentLyrics], { type: "text/plain;charset=utf-8" });
+          selectedFiles.lrc = new File([lrcBlob], currentFileName);
+          
+          document.getElementById('lrcFileName').innerText = currentFileName;
+          document.getElementById('lrcFileName').style.color = "#ffffff";
 
           resultBox.innerHTML = `
             <b style="color:#4ade80;">✓ Gevonden!</b><br>
@@ -447,7 +418,6 @@ Plak een Spotify-link bovenaan bij Stap 2 of vul bij Stap 1 een zoekterm in en k
       a.click();
     }
 
-    // --- Blok 3: Karaoke Duo Player Functies ---
     function handleFileSelect(event, type) {
       const file = event.target.files[0];
       if (!file) return;
@@ -475,40 +445,6 @@ Plak een Spotify-link bovenaan bij Stap 2 of vul bij Stap 1 een zoekterm in en k
       a.href = URL.createObjectURL(content);
       a.download = `${pkgName}.zip`;
       a.click();
-    }
-
-    async function importZipPackage(event) {
-      const file = event.target.files[0];
-      if (!file) return;
-
-      try {
-        const zip = await JSZip.loadAsync(file);
-        
-        for (const relativePath in zip.files) {
-          const zipEntry = zip.files[relativePath];
-          if (zipEntry.dir) continue;
-
-          const blob = await zipEntry.async("blob");
-          const extractedFile = new File([blob], zipEntry.name);
-
-          if (zipEntry.name.startsWith("music_")) {
-            selectedFiles.music = extractedFile;
-            document.getElementById('musicFileName').innerText = zipEntry.name.replace("music_", "");
-            document.getElementById('musicFileName').style.color = "#ffffff";
-          } else if (zipEntry.name.startsWith("vocal_")) {
-            selectedFiles.vocal = extractedFile;
-            document.getElementById('vocalFileName').innerText = zipEntry.name.replace("vocal_", "");
-            document.getElementById('vocalFileName').style.color = "#ffffff";
-          } else if (zipEntry.name.startsWith("lyrics_")) {
-            selectedFiles.lrc = extractedFile;
-            document.getElementById('lrcFileName').innerText = zipEntry.name.replace("lyrics_", "");
-            document.getElementById('lrcFileName').style.color = "#ffffff";
-          }
-        }
-        alert("ZIP pakket succesvol geïmporteerd!");
-      } catch (e) {
-        alert("Fout bij het uitpakken van het ZIP bestand.");
-      }
     }
   </script>
 </body>
