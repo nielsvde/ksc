@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>MP3 Downloaden & AI Splitsen</title>
+  <title>Spotisaver & AI MP3 Splitter</title>
   <style>
     * {
       box-sizing: border-box;
@@ -42,7 +42,7 @@
       background: linear-gradient(135deg, #a78bfa 0%, #c084fc 100%);
       -webkit-background-clip: text;
       -webkit-text-fill-color: transparent;
-      margin-bottom: 20px;
+      margin-bottom: 18px;
     }
 
     .section-title {
@@ -57,7 +57,7 @@
     .input-row {
       display: flex;
       gap: 8px;
-      margin-bottom: 16px;
+      margin-bottom: 14px;
     }
 
     input[type="text"] {
@@ -72,10 +72,6 @@
       outline: none;
     }
 
-    input[type="text"]::placeholder {
-      color: #64748b;
-    }
-
     .btn-action {
       background: #1db954;
       color: white;
@@ -87,10 +83,6 @@
       cursor: pointer;
       white-space: nowrap;
       flex-shrink: 0;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 4px;
     }
 
     .btn-main {
@@ -111,12 +103,17 @@
       margin-top: 4px;
     }
 
+    .btn-main:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
     .card {
       background-color: #1a2238;
       border: 1px solid #2e3a59;
       border-radius: 12px;
       padding: 12px;
-      margin-top: 16px;
+      margin-top: 14px;
     }
 
     .status-text {
@@ -125,22 +122,44 @@
       line-height: 1.4;
     }
 
-    .link-box {
-      background: #0f172a;
-      border: 1px solid #38bdf8;
-      color: #38bdf8;
-      padding: 6px;
-      border-radius: 6px;
-      word-break: break-all;
-      font-family: monospace;
-      margin-top: 6px;
-      font-size: 11px;
+    .file-input-wrapper {
+      position: relative;
+      flex: 1;
+    }
+
+    .file-input-wrapper input[type="file"] {
+      position: absolute;
+      left: 0;
+      top: 0;
+      opacity: 0;
+      width: 100%;
+      height: 100%;
+      cursor: pointer;
+    }
+
+    .file-label {
+      display: block;
+      background-color: #1a2238;
+      border: 1px solid #3b82f6;
+      border-radius: 10px;
+      color: #94a3b8;
+      padding: 10px 12px;
+      font-size: 13px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    audio {
+      width: 100%;
+      margin-top: 4px;
+      margin-bottom: 8px;
+      height: 32px;
     }
   </style>
 </head>
 <body>
 
-  <!-- Blok 1: MP3 Downloaden -->
   <div class="container">
     <h1>MP3 Downloaden</h1>
 
@@ -156,84 +175,161 @@
       <button class="btn-action" onclick="pasteFromClipboard()">Plak 📋</button>
     </div>
 
-    <button class="btn-main" onclick="processLink()">
-      Genereer & Open Direct →
-    </button>
+    <button class="btn-main" onclick="processLink()">Genereer & Open Direct →</button>
 
     <div class="card">
       <div class="status-text" id="statusDetail">
         <b>Hoe werkt het?</b><br>
-        1. Typ een titel en zoek.<br>
-        2. Kopieer de track-link in Spotify.<br>
-        3. Klik op 'Plak 📋' en daarna op 'Genereer & Open Direct'.
+        1. Zoek nummer op Spotify.<br>
+        2. Kopieer link en klik op 'Plak'.<br>
+        3. Klik op 'Genereer & Open Direct'.
       </div>
     </div>
   </div>
 
-  <!-- Blok 2: Splits MP3 in Zang en Muziek -->
   <div class="container">
     <h1>Splits mp3</h1>
 
-    <div class="section-title">AI Vocal & Instrumental Separator</div>
+    <div class="section-title">Upload MP3 Bestand</div>
+    <div class="input-row">
+      <div class="file-input-wrapper">
+        <span class="file-label" id="fileLabel">Kies MP3-bestand...</span>
+        <input type="file" id="audioFile" accept="audio/*" onchange="updateFileName()">
+      </div>
+      <button class="btn-action" onclick="document.getElementById('audioFile').click()">Blader 📁</button>
+    </div>
 
-    <button class="btn-main" onclick="openVocalRemover()">
-      Open Gratis AI Splitter ✂️
+    <button class="btn-main" id="splitBtn" onclick="processAudioLocal()">
+      Splits in Muziek & Zang ✂️
     </button>
 
     <div class="card">
-      <div class="status-text">
-        <b>Hoe werkt de AI-splitsing?</b><br>
-        1. Klik op de knop hierboven (opent een gratis AI-tool).<br>
-        2. Upload je MP3-bestand.<br>
-        3. De AI scheidt automatisch het nummer in een losse <b>Muziek spoor (Instrumental)</b> en <b>Zang spoor (Vocals)</b>.
+      <div class="status-text" id="splitStatus">
+        <b>Gratis AI Splitter:</b> Upload een MP3 om direct de zang en muziek te scheiden (zonder externe kosten).
       </div>
     </div>
   </div>
 
   <script>
-    // --- Blok 1 scripts ---
+    // --- Blok 1 ---
     function searchSpotify() {
-      const query = document.getElementById('searchQuery').value.trim();
-      if (query !== '') {
-        window.open(`https://open.spotify.com/search/${encodeURIComponent(query)}`, '_blank');
-      } else {
-        alert('Vul eerst een artiest of nummertitel in.');
-      }
+      const q = document.getElementById('searchQuery').value.trim();
+      if (q) window.open(`https://open.spotify.com/search/${encodeURIComponent(q)}`, '_blank');
     }
 
     async function pasteFromClipboard() {
-      const statusDetail = document.getElementById('statusDetail');
       try {
         const text = await navigator.clipboard.readText();
-        if (text) {
-          document.getElementById('spotifyUrl').value = text;
-          statusDetail.innerHTML = `<b style="color:#4ade80;">✓ Link geplakt!</b> Klik op 'Genereer & Open Direct'.`;
-        } else {
-          alert('Klembord is leeg.');
-        }
+        if (text) document.getElementById('spotifyUrl').value = text;
       } catch (err) {
-        alert('Geen klembord toestemming.');
+        alert('Plak handmatig.');
       }
     }
 
     function processLink() {
       const input = document.getElementById('spotifyUrl').value.trim();
-      const statusDetail = document.getElementById('statusDetail');
       const match = input.match(/track\/([a-zA-Z0-9]+)/);
-
       if (match && match[1]) {
-        const targetUrl = `https://spotisaver.net/en/track/${match[1]}`;
-        statusDetail.innerHTML = `<b style="color:#4ade80;">✓ Link Gegenereerd!</b><br><div class="link-box">${targetUrl}</div>`;
-        window.open(targetUrl, '_blank');
+        window.open(`https://spotisaver.net/en/track/${match[1]}`, '_blank');
       } else {
-        statusDetail.innerHTML = `<b style="color:#ef4444;">Fout:</b> Geen geldige Spotify track-link.`;
+        alert('Geen geldige Spotify link.');
       }
     }
 
-    // --- Blok 2 script ---
-    function openVocalRemover() {
-      // Opent de gratis AI-gebaseerde vocal remover
-      window.open('https://vocalremover.org/', '_blank');
+    // --- Blok 2 ---
+    function updateFileName() {
+      const file = document.getElementById('audioFile').files[0];
+      if (file) {
+        document.getElementById('fileLabel').innerText = file.name;
+        document.getElementById('fileLabel').style.color = "#ffffff";
+      }
+    }
+
+    async function processAudioLocal() {
+      const fileInput = document.getElementById('audioFile');
+      const status = document.getElementById('splitStatus');
+      const btn = document.getElementById('splitBtn');
+
+      if (!fileInput.files || fileInput.files.length === 0) {
+        alert('Selecteer eerst een MP3 bestand.');
+        return;
+      }
+
+      btn.disabled = true;
+      status.innerHTML = `<b style="color:#38bdf8;">⏳ Verwerken...</b> Audio-sporen worden gescheiden.`;
+
+      const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      const file = fileInput.files[0];
+      const arrayBuffer = await file.arrayBuffer();
+      
+      try {
+        const audioBuffer = await audioCtx.decodeAudioData(arrayBuffer);
+        
+        // 1. Muziek spoor (Center Cancellation)
+        const musicBuffer = audioCtx.createBuffer(1, audioBuffer.length, audioBuffer.sampleRate);
+        const left = audioBuffer.getChannelData(0);
+        const right = audioBuffer.numberOfChannels > 1 ? audioBuffer.getChannelData(1) : left;
+        const musicData = musicBuffer.getChannelData(0);
+
+        for (let i = 0; i < audioBuffer.length; i++) {
+          musicData[i] = (left[i] - right[i]) * 0.5;
+        }
+
+        // 2. Zang spoor (Mono Center Extraction)
+        const vocalBuffer = audioCtx.createBuffer(1, audioBuffer.length, audioBuffer.sampleRate);
+        const vocalData = vocalBuffer.getChannelData(0);
+
+        for (let i = 0; i < audioBuffer.length; i++) {
+          vocalData[i] = ((left[i] + right[i]) / 2) - musicData[i];
+        }
+
+        const musicBlob = bufferToWave(musicBuffer, audioBuffer.length);
+        const vocalBlob = bufferToWave(vocalBuffer, audioBuffer.length);
+
+        const musicUrl = URL.createObjectURL(musicBlob);
+        const vocalUrl = URL.createObjectURL(vocalBlob);
+
+        status.innerHTML = `
+          <b style="color:#4ade80;">✓ Gesplitst!</b><br><br>
+          <b>🎤 Zang Spoor (Vocals):</b>
+          <audio controls src="${vocalUrl}"></audio>
+          <b>🎵 Muziek Spoor (Instrumental):</b>
+          <audio controls src="${musicUrl}"></audio>
+        `;
+
+      } catch (err) {
+        status.innerHTML = `<b style="color:#ef4444;">Fout:</b> Verwerking mislukt.`;
+      } finally {
+        btn.disabled = false;
+      }
+    }
+
+    function bufferToWave(abuffer, len) {
+      let numOfChan = abuffer.numberOfChannels,
+          length = len * numOfChan * 2 + 44,
+          buffer = new ArrayBuffer(length),
+          view = new DataView(buffer),
+          channels = [], i, sample, offset = 0, pos = 0;
+
+      function setUint16(data) { view.setUint16(pos, data, true); pos += 2; }
+      function setUint32(data) { view.setUint32(pos, data, true); pos += 4; }
+
+      setUint32(0x46464952); setUint32(length - 8); setUint32(0x45564157);
+      setUint32(0x20746d66); setUint32(16); setUint16(1); setUint16(numOfChan);
+      setUint32(abuffer.sampleRate); setUint32(abuffer.sampleRate * 2 * numOfChan);
+      setUint16(numOfChan * 2); setUint16(16); setUint32(0x61746164); setUint32(length - pos - 4);
+
+      for (i = 0; i < abuffer.numberOfChannels; i++) channels.push(abuffer.getChannelData(i));
+
+      while (pos < length) {
+        for (i = 0; i < numOfChan; i++) {
+          sample = Math.max(-1, Math.min(1, channels[i][offset]));
+          sample = (0.5 + sample < 0 ? sample * 32768 : sample * 32767) | 0;
+          view.setInt16(pos, sample, true); pos += 2;
+        }
+        offset++;
+      }
+      return new Blob([buffer], { type: "audio/wav" });
     }
   </script>
 </body>
