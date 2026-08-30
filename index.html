@@ -319,13 +319,18 @@
     }
 
     .btn-play {
-      background: #2563eb;
+      background: #16a34a;
+      color: white;
+    }
+
+    .btn-play.paused {
+      background: #f97316;
       color: white;
     }
 
     .btn-stop {
-      background: #334155;
-      color: #94a3b8;
+      background: #dc2626;
+      color: white;
     }
   </style>
 </head>
@@ -375,7 +380,7 @@ Plak een Spotify-link bovenaan bij Stap 2 of vul bij Stap 1 een zoekterm in en k
     <h1>Export & Import</h1>
 
     <!-- Import Knop -->
-    <button class="btn-import" onclick="document.getElementById('zipImportInput').click()">
+    <button class="btn-import" onclick="triggerImport()">
       📂 Importeer Bestanden / ZIP Pakket
     </button>
     <input type="file" id="zipImportInput" class="hidden-input" accept=".zip,audio/*,.lrc,.txt" onchange="importZipPackage(event)">
@@ -450,7 +455,7 @@ Plak een Spotify-link bovenaan bij Stap 2 of vul bij Stap 1 een zoekterm in en k
 
     <!-- Afspeelknoppen -->
     <div class="controls-row">
-      <button class="btn-player btn-play" onclick="playAudio()">▶ Afspelen</button>
+      <button class="btn-player btn-play" id="btnPlayPause" onclick="togglePlayPause()">▶ Afspelen</button>
       <button class="btn-player btn-stop" onclick="stopAudio()">■ Stop</button>
     </div>
   </div>
@@ -473,6 +478,42 @@ Plak een Spotify-link bovenaan bij Stap 2 of vul bij Stap 1 een zoekterm in en k
 
     const audioMusic = document.getElementById('audioMusic');
     const audioVocal = document.getElementById('audioVocal');
+    const btnPlayPause = document.getElementById('btnPlayPause');
+
+    // Centrale Reset Functie
+    function resetAllData() {
+      stopAudio();
+
+      currentLyrics = "";
+      currentFileName = "songtekst.lrc";
+      parsedLyrics = [];
+      currentActiveIndex = -1;
+
+      selectedFiles = {
+        music: null,
+        vocal: null,
+        lrc: null
+      };
+
+      audioMusic.src = "";
+      audioVocal.src = "";
+
+      document.getElementById('musicFileName').innerText = "Geen bestand gekozen";
+      document.getElementById('musicFileName').style.color = "#94a3b8";
+      document.getElementById('vocalFileName').innerText = "Geen bestand gekozen";
+      document.getElementById('vocalFileName').style.color = "#94a3b8";
+      document.getElementById('lrcFileName').innerText = "Geen bestand gekozen";
+      document.getElementById('lrcFileName').style.color = "#94a3b8";
+
+      document.getElementById('packageName').value = "";
+      document.getElementById('lyricsScrollContainer').innerHTML = '<div class="lyric-line active">Geen bestand gekozen</div>';
+
+      document.getElementById('progressBar').value = 0;
+      document.getElementById('currentTimeText').innerText = "00:00";
+      document.getElementById('totalTimeText').innerText = "00:00";
+
+      setSyncOffset(0.0);
+    }
 
     function searchSpotify() {
       const q = document.getElementById('searchQuery').value.trim();
@@ -482,10 +523,18 @@ Plak een Spotify-link bovenaan bij Stap 2 of vul bij Stap 1 een zoekterm in en k
     async function pasteFromClipboard(inputId) {
       try {
         const text = await navigator.clipboard.readText();
-        if (text) document.getElementById(inputId).value = text;
+        if (text) {
+          document.getElementById(inputId).value = text;
+          resetAllData();
+        }
       } catch (err) {
         alert('Plak handmatig.');
       }
+    }
+
+    function triggerImport() {
+      resetAllData();
+      document.getElementById('zipImportInput').click();
     }
 
     function processLink() {
@@ -634,7 +683,6 @@ Plak een Spotify-link bovenaan bij Stap 2 of vul bij Stap 1 een zoekterm in en k
       }
     }
 
-    // --- Import functionaliteit voor ZIP of losse bestanden ---
     async function importZipPackage(event) {
       const file = event.target.files[0];
       if (!file) return;
@@ -747,13 +795,24 @@ Plak een Spotify-link bovenaan bij Stap 2 of vul bij Stap 1 een zoekterm in en k
       }).join('\n');
     }
 
-    function playAudio() {
+    // --- Afspelen / Pauze Logica ---
+    function togglePlayPause() {
       if (!selectedFiles.music && !selectedFiles.vocal) {
         alert("Selecteer eerst een muziek- of zangspoor om af te spelen.");
         return;
       }
-      audioMusic.play().catch(()=>{});
-      audioVocal.play().catch(()=>{});
+
+      if (audioMusic.paused && audioVocal.paused) {
+        audioMusic.play().catch(()=>{});
+        audioVocal.play().catch(()=>{});
+        btnPlayPause.innerText = "⏸ Pauze";
+        btnPlayPause.classList.add("paused");
+      } else {
+        audioMusic.pause();
+        audioVocal.pause();
+        btnPlayPause.innerText = "▶ Afspelen";
+        btnPlayPause.classList.remove("paused");
+      }
     }
 
     function stopAudio() {
@@ -761,6 +820,8 @@ Plak een Spotify-link bovenaan bij Stap 2 of vul bij Stap 1 een zoekterm in en k
       audioMusic.currentTime = 0;
       audioVocal.pause();
       audioVocal.currentTime = 0;
+      btnPlayPause.innerText = "▶ Afspelen";
+      btnPlayPause.classList.remove("paused");
     }
 
     function seekAudio(percent) {
@@ -802,6 +863,10 @@ Plak een Spotify-link bovenaan bij Stap 2 of vul bij Stap 1 een zoekterm in en k
           }
         });
       }
+    };
+
+    audioMusic.onended = () => {
+      stopAudio();
     };
 
     function formatTime(sec) {
