@@ -206,6 +206,22 @@
       display: none;
     }
 
+    /* Cover Preview Styling */
+    .cover-preview-box {
+      text-align: center;
+      margin-bottom: 12px;
+    }
+
+    .cover-preview-img {
+      max-width: 110px;
+      max-height: 110px;
+      border-radius: 12px;
+      display: none;
+      margin: 0 auto;
+      border: 1px solid #f59e0b;
+      box-shadow: 0 4px 12px rgba(245, 158, 11, 0.25);
+    }
+
     /* Dynamic Scrolling Player Display */
     .display-box {
       background: #090d16;
@@ -324,7 +340,6 @@
       color: white;
     }
 
-    /* Oranje achtergrond en witte tekst bij Pauze */
     .btn-play.paused {
       background: #f97316;
       color: #ffffff;
@@ -335,7 +350,6 @@
       color: white;
     }
 
-    /* Zorg voor strakke 2 witte streepjes in de pauze-knop */
     .pause-icon {
       font-style: normal;
       font-weight: bold;
@@ -393,7 +407,7 @@ Plak een Spotify-link bovenaan bij Stap 2 of vul bij Stap 1 een zoekterm in en k
     <button class="btn-import" onclick="triggerImport()">
       📂 Importeer Bestanden / ZIP Pakket
     </button>
-    <input type="file" id="zipImportInput" class="hidden-input" accept=".zip,audio/*,.lrc,.txt" onchange="importZipPackage(event)">
+    <input type="file" id="zipImportInput" class="hidden-input" accept=".zip,audio/*,.lrc,.txt,image/*" onchange="importZipPackage(event)">
 
     <div class="input-row" style="margin-bottom: 14px;">
       <input type="text" id="packageName" placeholder="Pakketnaam...">
@@ -428,6 +442,21 @@ Plak een Spotify-link bovenaan bij Stap 2 of vul bij Stap 1 een zoekterm in en k
       </div>
       <button class="btn-select-file" onclick="document.getElementById('lrcFileInput').click()">Kiezen</button>
       <input type="file" id="lrcFileInput" class="hidden-input" accept=".lrc,.txt" onchange="handleFileSelect(event, 'lrc')">
+    </div>
+
+    <!-- Cover Afbeelding (JPG/PNG) -->
+    <div class="track-picker-box">
+      <div class="track-info">
+        <div class="track-label" style="color: #f59e0b;">Cover Afbeelding (Spotify)</div>
+        <div class="track-filename" id="coverFileName">Geen bestand gekozen</div>
+      </div>
+      <button class="btn-select-file" onclick="document.getElementById('coverFileInput').click()">Kiezen</button>
+      <input type="file" id="coverFileInput" class="hidden-input" accept="image/*" onchange="handleFileSelect(event, 'cover')">
+    </div>
+
+    <!-- Preview van Cover Afbeelding -->
+    <div class="cover-preview-box">
+      <img id="coverPreview" class="cover-preview-img" alt="Cover Preview" />
     </div>
 
     <!-- Dynamic Scrolling Display -->
@@ -483,7 +512,8 @@ Plak een Spotify-link bovenaan bij Stap 2 of vul bij Stap 1 een zoekterm in en k
     let selectedFiles = {
       music: null,
       vocal: null,
-      lrc: null
+      lrc: null,
+      cover: null
     };
 
     const audioMusic = document.getElementById('audioMusic');
@@ -502,7 +532,8 @@ Plak een Spotify-link bovenaan bij Stap 2 of vul bij Stap 1 een zoekterm in en k
       selectedFiles = {
         music: null,
         vocal: null,
-        lrc: null
+        lrc: null,
+        cover: null
       };
 
       audioMusic.src = "";
@@ -514,6 +545,12 @@ Plak een Spotify-link bovenaan bij Stap 2 of vul bij Stap 1 een zoekterm in en k
       document.getElementById('vocalFileName').style.color = "#94a3b8";
       document.getElementById('lrcFileName').innerText = "Geen bestand gekozen";
       document.getElementById('lrcFileName').style.color = "#94a3b8";
+      document.getElementById('coverFileName').innerText = "Geen bestand gekozen";
+      document.getElementById('coverFileName').style.color = "#94a3b8";
+
+      const preview = document.getElementById('coverPreview');
+      preview.style.display = "none";
+      preview.src = "";
 
       document.getElementById('packageName').value = "";
       document.getElementById('lyricsScrollContainer').innerHTML = '<div class="lyric-line active">Geen bestand gekozen</div>';
@@ -571,7 +608,7 @@ Plak een Spotify-link bovenaan bij Stap 2 of vul bij Stap 1 een zoekterm in en k
       }
 
       btn.disabled = true;
-      resultBox.innerHTML = `<b style="color:#38bdf8;">⏳ Zoeken...</b> Songtekst wordt opgehaald.`;
+      resultBox.innerHTML = `<b style="color:#38bdf8;">⏳ Zoeken...</b> Songtekst en albumcover worden opgehaald.`;
 
       const match = rawInput.match(/track\/([a-zA-Z0-9]+)/);
       const trackId = match ? match[1] : null;
@@ -643,6 +680,32 @@ Plak een Spotify-link bovenaan bij Stap 2 of vul bij Stap 1 een zoekterm in en k
           parseLrcContent(currentLyrics);
           renderLyricsList();
 
+          // --- AUTOMATISCH COVER OPHALEN VAN SPOTIFY ---
+          if (trackId) {
+            try {
+              const metaRes = await fetch(`https://open.spotify.com/oembed?url=https://open.spotify.com/track/${trackId}`);
+              if (metaRes.ok) {
+                const meta = await metaRes.json();
+                if (meta.thumbnail_url) {
+                  const imgRes = await fetch(meta.thumbnail_url);
+                  const imgBlob = await imgRes.blob();
+                  const coverFileName = `${cleanTitle}.jpg`;
+
+                  selectedFiles.cover = new File([imgBlob], coverFileName, { type: "image/jpeg" });
+
+                  document.getElementById('coverFileName').innerText = coverFileName;
+                  document.getElementById('coverFileName').style.color = "#ffffff";
+
+                  const preview = document.getElementById('coverPreview');
+                  preview.src = URL.createObjectURL(imgBlob);
+                  preview.style.display = "block";
+                }
+              }
+            } catch (coverErr) {
+              console.log("Kon cover niet automatisch ophalen:", coverErr);
+            }
+          }
+
           resultBox.innerHTML = `
             <b style="color:#4ade80;">✓ Gevonden!</b><br>
             <b>🎵 ${item.artistName} - ${item.trackName}</b><br><br>
@@ -690,6 +753,10 @@ Plak een Spotify-link bovenaan bij Stap 2 of vul bij Stap 1 een zoekterm in en k
           renderLyricsList();
         };
         reader.readAsText(file);
+      } else if (type === 'cover') {
+        const preview = document.getElementById('coverPreview');
+        preview.src = URL.createObjectURL(file);
+        preview.style.display = "block";
       }
     }
 
@@ -727,6 +794,14 @@ Plak een Spotify-link bovenaan bij Stap 2 of vul bij Stap 1 een zoekterm in en k
               document.getElementById('lrcFileName').style.color = "#ffffff";
               parseLrcContent(currentLyrics);
               renderLyricsList();
+            } else if (nameLower.includes("cover_") || nameLower.endsWith(".jpg") || nameLower.endsWith(".png") || nameLower.endsWith(".webp")) {
+              selectedFiles.cover = new File([blob], zipEntry.name);
+              document.getElementById('coverFileName').innerText = zipEntry.name;
+              document.getElementById('coverFileName').style.color = "#ffffff";
+
+              const preview = document.getElementById('coverPreview');
+              preview.src = URL.createObjectURL(blob);
+              preview.style.display = "block";
             }
           });
         } catch (e) {
@@ -905,6 +980,10 @@ Plak een Spotify-link bovenaan bij Stap 2 of vul bij Stap 1 een zoekterm in en k
       const finalLrcContent = applyOffsetToLrc(currentLyrics, syncOffset);
       const lrcName = selectedFiles.lrc ? selectedFiles.lrc.name : currentFileName;
       zip.file(`lyrics_${lrcName}`, finalLrcContent);
+
+      if (selectedFiles.cover) {
+        zip.file(`cover_${selectedFiles.cover.name}`, selectedFiles.cover);
+      }
 
       const content = await zip.generateAsync({ type: "blob" });
       const a = document.createElement("a");
