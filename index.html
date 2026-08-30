@@ -421,13 +421,13 @@ Plak een Spotify-link bovenaan bij Stap 2 of vul bij Stap 1 een zoekterm in en k
 
     <!-- Import Knop -->
     <button class="btn-import" onclick="triggerImport()">
-      📂 Importeer Bestanden / ZIP Pakket
+      📂 Importeer KAR / ZIP Pakket
     </button>
-    <input type="file" id="zipImportInput" class="hidden-input" accept=".zip,audio/*,.lrc,.txt,image/*" onchange="importZipPackage(event)">
+    <input type="file" id="zipImportInput" class="hidden-input" accept=".kar,.zip" onchange="importZipPackage(event)">
 
     <div class="input-row" style="margin-bottom: 14px;">
       <input type="text" id="packageName" placeholder="Pakketnaam...">
-      <button class="btn-action" style="background:#3b82f6;" onclick="exportZipPackage()">📥 Export ZIP</button>
+      <button class="btn-action" style="background:#3b82f6;" onclick="exportZipPackage()">📥 Export KAR</button>
     </div>
 
     <!-- Muziek Spoor (A) -->
@@ -519,6 +519,8 @@ Plak een Spotify-link bovenaan bij Stap 2 of vul bij Stap 1 een zoekterm in en k
   <audio id="audioVocal"></audio>
 
   <script>
+    const APP_SECRET_KEY = "MijnUniekeKaraokeSleutel2026!";
+
     let currentLyrics = "";
     let currentFileName = "songtekst.lrc";
     let syncOffset = 0.0;
@@ -536,6 +538,15 @@ Plak een Spotify-link bovenaan bij Stap 2 of vul bij Stap 1 een zoekterm in en k
     const audioMusic = document.getElementById('audioMusic');
     const audioVocal = document.getElementById('audioVocal');
     const btnPlayPause = document.getElementById('btnPlayPause');
+
+    function scrambleBuffer(arrayBuffer, key) {
+      const uint8 = new Uint8Array(arrayBuffer);
+      const keyLength = key.length;
+      for (let i = 0; i < uint8.length; i++) {
+        uint8[i] ^= key.charCodeAt(i % keyLength);
+      }
+      return uint8.buffer;
+    }
 
     function resetAllData() {
       stopAudio();
@@ -793,49 +804,50 @@ Plak een Spotify-link bovenaan bij Stap 2 of vul bij Stap 1 een zoekterm in en k
       const file = event.target.files[0];
       if (!file) return;
 
-      if (file.name.endsWith('.zip')) {
-        try {
-          const zip = await JSZip.loadAsync(file);
-          document.getElementById('packageName').value = file.name.replace('.zip', '');
+      try {
+        const rawBuffer = await file.arrayBuffer();
+        const decryptedBuffer = scrambleBuffer(rawBuffer, APP_SECRET_KEY);
 
-          zip.forEach(async (relativePath, zipEntry) => {
-            if (zipEntry.dir) return;
+        const zip = await JSZip.loadAsync(decryptedBuffer);
+        document.getElementById('packageName').value = file.name.replace(/\.(kar|zip)$/i, '');
 
-            const nameLower = zipEntry.name.toLowerCase();
-            const blob = await zipEntry.async("blob");
+        zip.forEach(async (relativePath, zipEntry) => {
+          if (zipEntry.dir) return;
 
-            if (nameLower.includes("music_") || nameLower.includes("instrumental") || (nameLower.endsWith(".mp3") && !nameLower.includes("vocal"))) {
-              selectedFiles.music = new File([blob], zipEntry.name);
-              document.getElementById('musicFileName').innerText = zipEntry.name;
-              document.getElementById('musicFileName').style.color = "#ffffff";
-              audioMusic.src = URL.createObjectURL(selectedFiles.music);
-            } else if (nameLower.includes("vocal_") || nameLower.includes("vocals") || nameLower.includes("zang")) {
-              selectedFiles.vocal = new File([blob], zipEntry.name);
-              document.getElementById('vocalFileName').innerText = zipEntry.name;
-              document.getElementById('vocalFileName').style.color = "#ffffff";
-              audioVocal.src = URL.createObjectURL(selectedFiles.vocal);
-            } else if (nameLower.endsWith(".lrc") || nameLower.endsWith(".txt")) {
-              const text = await zipEntry.async("string");
-              selectedFiles.lrc = new File([blob], zipEntry.name);
-              currentLyrics = text;
-              currentFileName = zipEntry.name;
-              document.getElementById('lrcFileName').innerText = zipEntry.name;
-              document.getElementById('lrcFileName').style.color = "#ffffff";
-              parseLrcContent(currentLyrics);
-              renderLyricsList();
-            } else if (nameLower.includes("cover_") || nameLower.endsWith(".jpg") || nameLower.endsWith(".png") || nameLower.endsWith(".webp")) {
-              selectedFiles.cover = new File([blob], zipEntry.name);
-              document.getElementById('coverFileName').innerText = zipEntry.name;
-              document.getElementById('coverFileName').style.color = "#ffffff";
+          const nameLower = zipEntry.name.toLowerCase();
+          const blob = await zipEntry.async("blob");
 
-              const preview = document.getElementById('coverPreview');
-              preview.src = URL.createObjectURL(blob);
-              preview.style.display = "block";
-            }
-          });
-        } catch (e) {
-          alert("Fout bij uitpakken van het ZIP bestand.");
-        }
+          if (nameLower.includes("music_") || nameLower.includes("instrumental") || (nameLower.endsWith(".mp3") && !nameLower.includes("vocal"))) {
+            selectedFiles.music = new File([blob], zipEntry.name);
+            document.getElementById('musicFileName').innerText = zipEntry.name;
+            document.getElementById('musicFileName').style.color = "#ffffff";
+            audioMusic.src = URL.createObjectURL(selectedFiles.music);
+          } else if (nameLower.includes("vocal_") || nameLower.includes("vocals") || nameLower.includes("zang")) {
+            selectedFiles.vocal = new File([blob], zipEntry.name);
+            document.getElementById('vocalFileName').innerText = zipEntry.name;
+            document.getElementById('vocalFileName').style.color = "#ffffff";
+            audioVocal.src = URL.createObjectURL(selectedFiles.vocal);
+          } else if (nameLower.endsWith(".lrc") || nameLower.endsWith(".txt")) {
+            const text = await zipEntry.async("string");
+            selectedFiles.lrc = new File([blob], zipEntry.name);
+            currentLyrics = text;
+            currentFileName = zipEntry.name;
+            document.getElementById('lrcFileName').innerText = zipEntry.name;
+            document.getElementById('lrcFileName').style.color = "#ffffff";
+            parseLrcContent(currentLyrics);
+            renderLyricsList();
+          } else if (nameLower.includes("cover_") || nameLower.endsWith(".jpg") || nameLower.endsWith(".png") || nameLower.endsWith(".webp")) {
+            selectedFiles.cover = new File([blob], zipEntry.name);
+            document.getElementById('coverFileName').innerText = zipEntry.name;
+            document.getElementById('coverFileName').style.color = "#ffffff";
+
+            const preview = document.getElementById('coverPreview');
+            preview.src = URL.createObjectURL(blob);
+            preview.style.display = "block";
+          }
+        });
+      } catch (e) {
+        alert("Fout bij het openen van het bestand! Dit is geen geldig of ondersteund .kar pakket.");
       }
     }
 
@@ -1013,10 +1025,13 @@ Plak een Spotify-link bovenaan bij Stap 2 of vul bij Stap 1 een zoekterm in en k
         zip.file(`cover_${selectedFiles.cover.name}`, selectedFiles.cover);
       }
 
-      const content = await zip.generateAsync({ type: "blob" });
+      const zipArrayBuffer = await zip.generateAsync({ type: "arraybuffer" });
+      const encryptedBuffer = scrambleBuffer(zipArrayBuffer, APP_SECRET_KEY);
+
+      const encryptedBlob = new Blob([encryptedBuffer], { type: "application/octet-stream" });
       const a = document.createElement("a");
-      a.href = URL.createObjectURL(content);
-      a.download = `${pkgName}.zip`;
+      a.href = URL.createObjectURL(encryptedBlob);
+      a.download = `${pkgName}.kar`;
       a.click();
     }
   </script>
