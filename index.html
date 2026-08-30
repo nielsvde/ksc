@@ -50,13 +50,38 @@
       margin-bottom: 20px;
     }
 
+    .section-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 8px;
+    }
+
     .section-title {
       font-size: 12px;
       text-transform: uppercase;
       letter-spacing: 0.5px;
       color: #38bdf8;
-      margin-bottom: 8px;
       font-weight: 600;
+    }
+
+    .btn-paste {
+      background: #1e293b;
+      border: 1px solid #3b82f6;
+      color: #38bdf8;
+      border-radius: 6px;
+      padding: 4px 8px;
+      font-size: 11px;
+      font-weight: 600;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      transition: background-color 0.2s;
+    }
+
+    .btn-paste:hover {
+      background: #334155;
     }
 
     .input-row {
@@ -153,14 +178,17 @@
     <p class="subtitle">Genereer direct de specifieke Spotisaver track-URL</p>
 
     <!-- Stap 1: Zoeken op Spotify -->
-    <div class="section-title">Stap 1: Zoek nummer op Spotify</div>
+    <div class="section-title" style="margin-bottom: 8px;">Stap 1: Zoek nummer op Spotify</div>
     <div class="input-row">
       <input type="text" id="searchQuery" placeholder="Bijv. Artist - Nummer titel">
       <button class="btn-spotify" onclick="searchSpotify()">Zoek op Spotify 🔍</button>
     </div>
 
     <!-- Stap 2: Link converteren & direct openen -->
-    <div class="section-title">Stap 2: Plak Spotify Link</div>
+    <div class="section-header">
+      <div class="section-title">Stap 2: Plak Spotify Link</div>
+      <button class="btn-paste" onclick="pasteFromClipboard()">📋 Plak van klembord</button>
+    </div>
     <textarea id="spotifyUrl" placeholder="Plak hier de Spotify-link (https://open.spotify.com/track/...)"></textarea>
 
     <button class="btn-main" onclick="processLink()">
@@ -172,7 +200,7 @@
         <b>Hoe werkt het?</b><br>
         1. Typ een titel en zoek op Spotify.<br>
         2. Kopieer de track-link in Spotify.<br>
-        3. Plak de link bij Stap 2 en klik op 'Genereer & Open Direct'.
+        3. Klik op 'Plak van klembord' en daarna op 'Genereer & Open Direct'.
       </div>
     </div>
   </div>
@@ -189,7 +217,23 @@
       }
     }
 
-    // 2. Maakt de specifieke Spotisaver URL en opent deze direct
+    // 2. Plakken van Klembord
+    async function pasteFromClipboard() {
+      const statusDetail = document.getElementById('statusDetail');
+      try {
+        const text = await navigator.clipboard.readText();
+        if (text) {
+          document.getElementById('spotifyUrl').value = text;
+          statusDetail.innerHTML = `<b style="color:#4ade80;">✓ Link geplakt van klembord!</b> Klik nu op 'Genereer & Open Direct'.`;
+        } else {
+          alert('Klembord is leeg.');
+        }
+      } catch (err) {
+        alert('Geen toestemming om klembord te lezen. Plak de link handmatig.');
+      }
+    }
+
+    // 3. Maakt de specifieke Spotisaver URL en opent deze direct
     function processLink() {
       const input = document.getElementById('spotifyUrl').value.trim();
       const statusDetail = document.getElementById('statusDetail');
