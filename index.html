@@ -133,9 +133,9 @@
       line-height: 1.4;
     }
 
-    .code-box {
+    .link-box {
       background: #0f172a;
-      border: 1px solid #334155;
+      border: 1px solid #38bdf8;
       color: #38bdf8;
       padding: 8px;
       border-radius: 6px;
@@ -150,21 +150,21 @@
 
   <div class="container">
     <h1>Spotisaver Link Generator</h1>
-    <p class="subtitle">Zoek een nummer of converteer direct een link</p>
+    <p class="subtitle">Genereer direct de specifieke Spotisaver track-URL</p>
 
-    <!-- Zoeken op Spotify -->
+    <!-- Stap 1: Zoeken op Spotify -->
     <div class="section-title">Stap 1: Zoek nummer op Spotify</div>
     <div class="input-row">
       <input type="text" id="searchQuery" placeholder="Bijv. Artist - Nummer titel">
       <button class="btn-spotify" onclick="searchSpotify()">Zoek op Spotify 🔍</button>
     </div>
 
-    <!-- Link plakken -->
+    <!-- Stap 2: Link converteren & direct openen -->
     <div class="section-title">Stap 2: Plak Spotify Link</div>
     <textarea id="spotifyUrl" placeholder="Plak hier de Spotify-link (https://open.spotify.com/track/...)"></textarea>
 
     <button class="btn-main" onclick="processLink()">
-      Kopieer & Open Spotisaver →
+      Genereer & Open Direct →
     </button>
 
     <div class="card">
@@ -172,13 +172,13 @@
         <b>Hoe werkt het?</b><br>
         1. Typ een titel en zoek op Spotify.<br>
         2. Kopieer de track-link in Spotify.<br>
-        3. Plak de link bij Stap 2 en klik op 'Kopieer & Open'.
+        3. Plak de link bij Stap 2 en klik op 'Genereer & Open Direct'.
       </div>
     </div>
   </div>
 
   <script>
-    // 1. Zoekfunctie: Opent Spotify zoekpagina
+    // 1. Opent Spotify Zoekpagina
     function searchSpotify() {
       const query = document.getElementById('searchQuery').value.trim();
       if (query !== '') {
@@ -189,41 +189,30 @@
       }
     }
 
-    // 2. Klembord & Omleidingsfunctie
-    async function processLink() {
+    // 2. Maakt de specifieke Spotisaver URL en opent deze direct
+    function processLink() {
       const input = document.getElementById('spotifyUrl').value.trim();
       const statusDetail = document.getElementById('statusDetail');
 
-      // Extraheer Spotify Track ID
+      // Haal het Spotify Track ID op (tussen /track/ en ?)
       const regex = /track\/([a-zA-Z0-9]+)/;
       const match = input.match(regex);
 
       if (match && match[1]) {
         const trackId = match[1];
-        const cleanSpotifyUrl = `https://open.spotify.com/track/${trackId}`;
-        const targetUrl = `https://spotisaver.net/en1`;
+        
+        // Bouw de exacte Spotisaver track-URL
+        const targetUrl = `https://spotisaver.net/en/track/${trackId}`;
 
-        // Kopieer naar klembord
-        try {
-          await navigator.clipboard.writeText(cleanSpotifyUrl);
-          statusDetail.innerHTML = `
-            <b style="color:#4ade80;">✓ Link gekopieerd naar klembord!</b><br>
-            Track ID: <code>${trackId}</code><br>
-            <i>Plak deze link zo meteen in het vak op Spotisaver.</i>
-            <div class="code-box">${cleanSpotifyUrl}</div>
-          `;
-        } catch (err) {
-          statusDetail.innerHTML = `
-            <b>Status:</b> Gereed!<br>
-            <i>Kopieer onderstaande schone link handmatig als dat nodig is:</i>
-            <div class="code-box">${cleanSpotifyUrl}</div>
-          `;
-        }
+        statusDetail.innerHTML = `
+          <b style="color:#4ade80;">✓ Link Gegenereerd!</b><br>
+          Gegenereerde URL:
+          <div class="link-box">${targetUrl}</div>
+          <br><i>Wordt nu geopend...</i>
+        `;
 
-        // Open Spotisaver hoofdpagina
-        setTimeout(() => {
-          window.open(targetUrl, '_blank');
-        }, 1000);
+        // Open de gegeneerde URL direct in een nieuw tabblad
+        window.open(targetUrl, '_blank');
 
       } else {
         statusDetail.innerHTML = `<b style="color:#ef4444;">Fout:</b> Geen geldige Spotify track-link gevonden. Zorg dat er '/track/' in de ingevulde link staat.`;
