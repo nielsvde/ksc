@@ -161,6 +161,24 @@
       overflow-y: auto;
     }
 
+    .track-result-item {
+      background: #161d31;
+      border: 1px solid #263354;
+      border-radius: 8px;
+      padding: 8px 12px;
+      margin-bottom: 6px;
+      cursor: pointer;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      transition: background 0.2s;
+    }
+
+    .track-result-item:hover {
+      background: #253356;
+      border-color: #8b5cf6;
+    }
+
     .track-picker-box {
       background: #1a2238;
       border: 1px solid #2e3a59;
@@ -206,7 +224,6 @@
       display: none;
     }
 
-    /* Cover Preview Styling */
     .cover-preview-box {
       text-align: center;
       margin-bottom: 12px;
@@ -222,7 +239,6 @@
       box-shadow: 0 4px 12px rgba(245, 158, 11, 0.25);
     }
 
-    /* Dynamic Scrolling Player Display */
     .display-box {
       background: #090d16;
       border: 1px solid #1e293b;
@@ -508,6 +524,7 @@ Plak een Spotify-link bovenaan bij Stap 2 of vul bij Stap 1 een zoekterm in en k
     let syncOffset = 0.0;
     let parsedLyrics = [];
     let currentActiveIndex = -1;
+    let searchResultsList = [];
 
     let selectedFiles = {
       music: null,
@@ -520,7 +537,6 @@ Plak een Spotify-link bovenaan bij Stap 2 of vul bij Stap 1 een zoekterm in en k
     const audioVocal = document.getElementById('audioVocal');
     const btnPlayPause = document.getElementById('btnPlayPause');
 
-    // Centrale Reset Functie
     function resetAllData() {
       stopAudio();
 
@@ -528,6 +544,7 @@ Plak een Spotify-link bovenaan bij Stap 2 of vul bij Stap 1 een zoekterm in en k
       currentFileName = "songtekst.lrc";
       parsedLyrics = [];
       currentActiveIndex = -1;
+      searchResultsList = [];
 
       selectedFiles = {
         music: null,
@@ -608,120 +625,132 @@ Plak een Spotify-link bovenaan bij Stap 2 of vul bij Stap 1 een zoekterm in en k
       }
 
       btn.disabled = true;
-      resultBox.innerHTML = `<b style="color:#38bdf8;">⏳ Zoeken...</b> Songtekst en albumcover worden opgehaald.`;
+      resultBox.innerHTML = `<b style="color:#38bdf8;">⏳ Zoeken...</b> Resultaten worden opgehaald.`;
 
       const match = rawInput.match(/track\/([a-zA-Z0-9]+)/);
       const trackId = match ? match[1] : null;
 
       try {
-        let item = null;
+        let titleFromSpotify = "";
+        let artistFromSpotify = "";
 
         if (trackId) {
           try {
-            const res = await fetch(`https://lrclib.net/api/get-by-spotify-id/${trackId}`);
-            if (res.ok) item = await res.json();
-          } catch (e) {}
-
-          if (!item || (!item.syncedLyrics && !item.plainLyrics)) {
-            try {
-              const metaRes = await fetch(`https://open.spotify.com/oembed?url=https://open.spotify.com/track/${trackId}`);
-              if (metaRes.ok) {
-                const meta = await metaRes.json();
-                let title = meta.title || "";
-                let artistName = "";
-                let trackName = title;
-
-                if (title.includes(" door ")) {
-                  const parts = title.split(" door ");
-                  trackName = parts[0].trim();
-                  artistName = parts[1].trim();
-                } else if (title.includes(" by ")) {
-                  const parts = title.split(" by ");
-                  trackName = parts[0].trim();
-                  artistName = parts[1].trim();
-                }
-
-                const cleanTrackName = trackName.replace(/\s*[\(\-].*$/, '').trim();
-
-                let searchUrl = `https://lrclib.net/api/search?track_name=${encodeURIComponent(cleanTrackName)}`;
-                if (artistName) searchUrl += `&artist_name=${encodeURIComponent(artistName)}`;
-
-                const searchRes = await fetch(searchUrl);
-                if (searchRes.ok) {
-                  const searchData = await searchRes.json();
-                  if (searchData && searchData.length > 0) item = searchData[0];
-                }
+            const metaRes = await fetch(`https://open.spotify.com/oembed?url=https://open.spotify.com/track/${trackId}`);
+            if (metaRes.ok) {
+              const meta = await metaRes.json();
+              let title = meta.title || "";
+              if (title.includes(" door ")) {
+                const parts = title.split(" door ");
+                titleFromSpotify = parts[0].trim();
+                artistFromSpotify = parts[1].trim();
+              } else if (title.includes(" by ")) {
+                const parts = title.split(" by ");
+                titleFromSpotify = parts[0].trim();
+                artistFromSpotify = parts[1].trim();
+              } else {
+                titleFromSpotify = title;
               }
-            } catch (e) {
-              console.log("Metadata fallback mislukt", e);
             }
-          }
-        } else {
-          const searchRes = await fetch(`https://lrclib.net/api/search?q=${encodeURIComponent(rawInput)}`);
-          if (searchRes.ok) {
-            const searchData = await searchRes.json();
-            if (searchData && searchData.length > 0) item = searchData[0];
-          }
+          } catch(e) {}
         }
 
-        if (item && (item.syncedLyrics || item.plainLyrics)) {
-          currentLyrics = item.syncedLyrics || item.plainLyrics;
-          const cleanTitle = `${item.artistName} - ${item.trackName}`.replace(/[/\\?%*:|"<>]/g, '');
-          currentFileName = `${cleanTitle}.lrc`;
-
-          document.getElementById('packageName').value = cleanTitle;
-
-          const lrcBlob = new Blob([currentLyrics], { type: "text/plain;charset=utf-8" });
-          selectedFiles.lrc = new File([lrcBlob], currentFileName);
-          
-          document.getElementById('lrcFileName').innerText = currentFileName;
-          document.getElementById('lrcFileName').style.color = "#ffffff";
-
-          parseLrcContent(currentLyrics);
-          renderLyricsList();
-
-          // --- AUTOMATISCH COVER OPHALEN VAN SPOTIFY ---
-          if (trackId) {
-            try {
-              const metaRes = await fetch(`https://open.spotify.com/oembed?url=https://open.spotify.com/track/${trackId}`);
-              if (metaRes.ok) {
-                const meta = await metaRes.json();
-                if (meta.thumbnail_url) {
-                  const imgRes = await fetch(meta.thumbnail_url);
-                  const imgBlob = await imgRes.blob();
-                  const coverFileName = `${cleanTitle}.jpg`;
-
-                  selectedFiles.cover = new File([imgBlob], coverFileName, { type: "image/jpeg" });
-
-                  document.getElementById('coverFileName').innerText = coverFileName;
-                  document.getElementById('coverFileName').style.color = "#ffffff";
-
-                  const preview = document.getElementById('coverPreview');
-                  preview.src = URL.createObjectURL(imgBlob);
-                  preview.style.display = "block";
-                }
-              }
-            } catch (coverErr) {
-              console.log("Kon cover niet automatisch ophalen:", coverErr);
-            }
-          }
-
-          resultBox.innerHTML = `
-            <b style="color:#4ade80;">✓ Gevonden!</b><br>
-            <b>🎵 ${item.artistName} - ${item.trackName}</b><br><br>
-            <button class="btn-secondary" onclick="downloadLrcFile()" style="margin-bottom: 12px; border-color: #1db954; color: #1db954;">
-              Download .LRC Bestand 💾
-            </button>
-            <div style="font-family: monospace; font-size: 11px; white-space: pre-wrap;">${currentLyrics}</div>
-          `;
+        let searchUrl = "";
+        if (titleFromSpotify && artistFromSpotify) {
+          searchUrl = `https://lrclib.net/api/search?track_name=${encodeURIComponent(titleFromSpotify)}&artist_name=${encodeURIComponent(artistFromSpotify)}`;
+        } else if (trackId) {
+          searchUrl = `https://lrclib.net/api/search?q=${encodeURIComponent(titleFromSpotify || rawInput)}`;
         } else {
-          resultBox.innerHTML = `<b style="color:#ef4444;">Niet gevonden:</b> Geen exacte songtekst aangetroffen in de database voor deze track.`;
+          searchUrl = `https://lrclib.net/api/search?q=${encodeURIComponent(rawInput)}`;
+        }
+
+        const res = await fetch(searchUrl);
+        if (res.ok) {
+          searchResultsList = await res.json();
+        }
+
+        if (searchResultsList && searchResultsList.length > 0) {
+          if (searchResultsList.length === 1) {
+            selectTrackResult(0, trackId);
+          } else {
+            let html = `<b style="color:#38bdf8;">Kies het juiste nummer (${searchResultsList.length} gevonden):</b><br><br>`;
+            searchResultsList.forEach((item, idx) => {
+              const isSynced = item.syncedLyrics ? "⏱️ Synced" : "📄 Plain";
+              html += `
+                <div class="track-result-item" onclick="selectTrackResult(${idx}, '${trackId || ''}')">
+                  <div>
+                    <strong style="color:#ffffff;">${item.artistName} - ${item.trackName}</strong><br>
+                    <small style="color:#94a3b8;">Album: ${item.albumName || 'Onbekend'}</small>
+                  </div>
+                  <span style="font-size:10px; background:#2a3454; padding:3px 6px; border-radius:4px; color:#c084fc;">${isSynced}</span>
+                </div>
+              `;
+            });
+            resultBox.innerHTML = html;
+          }
+        } else {
+          resultBox.innerHTML = `<b style="color:#ef4444;">Niet gevonden:</b> Geen songtekst aangetroffen in de database.`;
         }
       } catch (err) {
         resultBox.innerHTML = `<b style="color:#ef4444;">Fout:</b> Er ging iets mis bij het ophalen van de songtekst.`;
       } finally {
         btn.disabled = false;
       }
+    }
+
+    async function selectTrackResult(index, trackId) {
+      const item = searchResultsList[index];
+      if (!item) return;
+
+      const resultBox = document.getElementById('lyricsResult');
+      currentLyrics = item.syncedLyrics || item.plainLyrics;
+      const cleanTitle = `${item.artistName} - ${item.trackName}`.replace(/[/\\?%*:|"<>]/g, '');
+      currentFileName = `${cleanTitle}.lrc`;
+
+      document.getElementById('packageName').value = cleanTitle;
+
+      const lrcBlob = new Blob([currentLyrics], { type: "text/plain;charset=utf-8" });
+      selectedFiles.lrc = new File([lrcBlob], currentFileName);
+      
+      document.getElementById('lrcFileName').innerText = currentFileName;
+      document.getElementById('lrcFileName').style.color = "#ffffff";
+
+      parseLrcContent(currentLyrics);
+      renderLyricsList();
+
+      if (trackId) {
+        try {
+          const metaRes = await fetch(`https://open.spotify.com/oembed?url=https://open.spotify.com/track/${trackId}`);
+          if (metaRes.ok) {
+            const meta = await metaRes.json();
+            if (meta.thumbnail_url) {
+              const imgRes = await fetch(meta.thumbnail_url);
+              const imgBlob = await imgRes.blob();
+              const coverFileName = `${cleanTitle}.jpg`;
+
+              selectedFiles.cover = new File([imgBlob], coverFileName, { type: "image/jpeg" });
+
+              document.getElementById('coverFileName').innerText = coverFileName;
+              document.getElementById('coverFileName').style.color = "#ffffff";
+
+              const preview = document.getElementById('coverPreview');
+              preview.src = URL.createObjectURL(imgBlob);
+              preview.style.display = "block";
+            }
+          }
+        } catch (coverErr) {
+          console.log("Kon cover niet ophalen:", coverErr);
+        }
+      }
+
+      resultBox.innerHTML = `
+        <b style="color:#4ade80;">✓ Geladen!</b><br>
+        <b>🎵 ${item.artistName} - ${item.trackName}</b><br><br>
+        <button class="btn-secondary" onclick="downloadLrcFile()" style="margin-bottom: 12px; border-color: #1db954; color: #1db954;">
+          Download .LRC Bestand 💾
+        </button>
+        <div style="font-family: monospace; font-size: 11px; white-space: pre-wrap;">${currentLyrics}</div>
+      `;
     }
 
     function downloadLrcFile() {
@@ -880,7 +909,6 @@ Plak een Spotify-link bovenaan bij Stap 2 of vul bij Stap 1 een zoekterm in en k
       }).join('\n');
     }
 
-    // --- Afspelen / Pauze Logica ---
     function togglePlayPause() {
       if (!selectedFiles.music && !selectedFiles.vocal) {
         alert("Selecteer eerst een muziek- of zangspoor om af te spelen.");
