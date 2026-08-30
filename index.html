@@ -103,6 +103,23 @@
       margin-top: 4px;
     }
 
+    .btn-secondary {
+      width: 100%;
+      background: #1a2238;
+      color: #38bdf8;
+      border: 1px solid #38bdf8;
+      border-radius: 12px;
+      padding: 10px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 6px;
+      margin-top: 8px;
+    }
+
     .btn-main:disabled {
       opacity: 0.5;
       cursor: not-allowed;
@@ -160,6 +177,7 @@
 </head>
 <body>
 
+  <!-- Blok 1: MP3 Downloaden -->
   <div class="container">
     <h1>MP3 Downloaden</h1>
 
@@ -187,10 +205,15 @@
     </div>
   </div>
 
+  <!-- Blok 2: Splits MP3 -->
   <div class="container">
     <h1>Splits mp3</h1>
 
-    <div class="section-title">Upload MP3 Bestand</div>
+    <button class="btn-main" onclick="window.open('https://www.bandlab.com/splitter', '_blank')">
+      Open Gratis AI Splitter (BandLab) ✂️
+    </button>
+
+    <div class="section-title" style="margin-top: 16px;">Of snelle snelle filter-splitsing in browser:</div>
     <div class="input-row">
       <div class="file-input-wrapper">
         <span class="file-label" id="fileLabel">Kies MP3-bestand...</span>
@@ -199,13 +222,14 @@
       <button class="btn-action" onclick="document.getElementById('audioFile').click()">Blader 📁</button>
     </div>
 
-    <button class="btn-main" id="splitBtn" onclick="processAudioLocal()">
-      Splits in Muziek & Zang ✂️
+    <button class="btn-secondary" id="splitBtn" onclick="processAudioLocal()">
+      Snel splitsen (Basis kwaliteit)
     </button>
 
     <div class="card">
       <div class="status-text" id="splitStatus">
-        <b>Gratis AI Splitter:</b> Upload een MP3 om direct de zang en muziek te scheiden (zonder externe kosten).
+        <b>💡 Tip voor de beste kwaliteit:</b><br>
+        Gebruik <b>BandLab Splitter</b> bovenaan voor haarscherpe AI-scheiding van sporen.
       </div>
     </div>
   </div>
