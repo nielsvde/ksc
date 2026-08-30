@@ -100,7 +100,7 @@
       align-items: center;
       gap: 6px;
       box-shadow: 0 4px 14px rgba(99, 102, 241, 0.4);
-      margin-top: 4px;
+      margin-top: 8px;
     }
 
     .btn-secondary {
@@ -141,48 +141,13 @@
       max-height: 220px;
       overflow-y: auto;
     }
-
-    .file-input-wrapper {
-      position: relative;
-      flex: 1;
-    }
-
-    .file-input-wrapper input[type="file"] {
-      position: absolute;
-      left: 0;
-      top: 0;
-      opacity: 0;
-      width: 100%;
-      height: 100%;
-      cursor: pointer;
-    }
-
-    .file-label {
-      display: block;
-      background-color: #1a2238;
-      border: 1px solid #3b82f6;
-      border-radius: 10px;
-      color: #94a3b8;
-      padding: 10px 12px;
-      font-size: 13px;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
-    }
-
-    audio {
-      width: 100%;
-      margin-top: 4px;
-      margin-bottom: 8px;
-      height: 32px;
-    }
   </style>
 </head>
 <body>
 
-  <!-- Blok 1: MP3 Downloaden -->
+  <!-- Blok 1: MP3, Splitter & Songtekst Acties -->
   <div class="container">
-    <h1>MP3 Downloaden</h1>
+    <h1>MP3 & Tools</h1>
 
     <div class="section-title">Stap 1: Zoek nummer op Spotify</div>
     <div class="input-row">
@@ -198,63 +163,23 @@
 
     <button class="btn-main" onclick="processLink()">Genereer & Open Direct →</button>
 
-    <div class="card">
-      <div class="status-text" id="statusDetail">
-<b>Hoe werkt het?</b>
-1. Zoek nummer op Spotify.
-2. Kopieer link en klik op 'Plak'.
-3. Klik op 'Genereer & Open Direct'.
-      </div>
-    </div>
-  </div>
-
-  <!-- Blok 2: Splits MP3 -->
-  <div class="container">
-    <h1>Splits mp3</h1>
-
     <button class="btn-main" onclick="window.open('https://vocalremover.org/next/nl/', '_blank')">
       Open VocalRemover AI Splitter ✂️
     </button>
 
-    <div class="section-title" style="margin-top: 16px;">Of snelle filter-splitsing in browser:</div>
-    <div class="input-row">
-      <div class="file-input-wrapper">
-        <span class="file-label" id="fileLabel">Kies MP3-bestand...</span>
-        <input type="file" id="audioFile" accept="audio/*" onchange="updateFileName()">
-      </div>
-      <button class="btn-action" onclick="document.getElementById('audioFile').click()">Blader 📁</button>
-    </div>
-
-    <button class="btn-secondary" id="splitBtn" onclick="processAudioLocal()">
-      Snel splitsen (Basis kwaliteit)
-    </button>
-
-    <div class="card">
-      <div class="status-text" id="splitStatus">
-<b>💡 Tip voor de beste kwaliteit:</b>
-Gebruik <b>VocalRemover</b> bovenaan om zang en muziek schoon te scheiden.
-      </div>
-    </div>
-  </div>
-
-  <!-- Blok 3: Geïntegreerde Songtekst Zoeker -->
-  <div class="container">
-    <h1>Songtekst Zoeken</h1>
-
-    <div class="section-title">Artiest - Nummer / Spotify Link</div>
-    <div class="input-row">
-      <input type="text" id="lyricsQuery" placeholder="Plak Spotify-link of typ 'Artiest - Nummer'">
-      <button class="btn-action" onclick="pasteFromClipboard('lyricsQuery')">Plak 📋</button>
-    </div>
-
     <button class="btn-main" id="lyricsBtn" onclick="fetchLyricsDirect()">
       Haal Songtekst Op 🎤
     </button>
+  </div>
 
-    <div class="card">
+  <!-- Blok 2: Songtekst Resultaat -->
+  <div class="container">
+    <h1>Songtekst</h1>
+
+    <div class="card" style="margin-top: 0;">
       <div class="status-text" id="lyricsResult">
 <b>💡 LRCLIB Integratie:</b>
-Plak een Spotify-link of voer een titel in om de songtekst direct op te halen.
+Plak een Spotify-link bovenaan bij Stap 2 of vul bij Stap 1 een zoekterm in en klik op 'Haal Songtekst Op 🎤'.
       </div>
     </div>
   </div>
@@ -263,7 +188,6 @@ Plak een Spotify-link of voer een titel in om de songtekst direct op te halen.
     let currentLyrics = "";
     let currentFileName = "songtekst.lrc";
 
-    // --- Blok 1 ---
     function searchSpotify() {
       const q = document.getElementById('searchQuery').value.trim();
       if (q) window.open(`https://open.spotify.com/search/${encodeURIComponent(q)}`, '_blank');
@@ -288,124 +212,28 @@ Plak een Spotify-link of voer een titel in om de songtekst direct op te halen.
       }
     }
 
-    // --- Blok 2 ---
-    function updateFileName() {
-      const file = document.getElementById('audioFile').files[0];
-      if (file) {
-        document.getElementById('fileLabel').innerText = file.name;
-        document.getElementById('fileLabel').style.color = "#ffffff";
-      }
-    }
-
-    async function processAudioLocal() {
-      const fileInput = document.getElementById('audioFile');
-      const status = document.getElementById('splitStatus');
-      const btn = document.getElementById('splitBtn');
-
-      if (!fileInput.files || fileInput.files.length === 0) {
-        alert('Selecteer eerst een MP3 bestand.');
-        return;
-      }
-
-      btn.disabled = true;
-      status.innerHTML = `<b style="color:#38bdf8;">⏳ Verwerken...</b> Audio-sporen worden gescheiden.`;
-
-      const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-      const file = fileInput.files[0];
-      const arrayBuffer = await file.arrayBuffer();
-      
-      try {
-        const audioBuffer = await audioCtx.decodeAudioData(arrayBuffer);
-        
-        // 1. Muziek spoor (Center Cancellation)
-        const musicBuffer = audioCtx.createBuffer(1, audioBuffer.length, audioBuffer.sampleRate);
-        const left = audioBuffer.getChannelData(0);
-        const right = audioBuffer.numberOfChannels > 1 ? audioBuffer.getChannelData(1) : left;
-        const musicData = musicBuffer.getChannelData(0);
-
-        for (let i = 0; i < audioBuffer.length; i++) {
-          musicData[i] = (left[i] - right[i]) * 0.5;
-        }
-
-        // 2. Zang spoor (Mono Center Extraction)
-        const vocalBuffer = audioCtx.createBuffer(1, audioBuffer.length, audioBuffer.sampleRate);
-        const vocalData = vocalBuffer.getChannelData(0);
-
-        for (let i = 0; i < audioBuffer.length; i++) {
-          vocalData[i] = ((left[i] + right[i]) / 2) - musicData[i];
-        }
-
-        const musicBlob = bufferToWave(musicBuffer, audioBuffer.length);
-        const vocalBlob = bufferToWave(vocalBuffer, audioBuffer.length);
-
-        const musicUrl = URL.createObjectURL(musicBlob);
-        const vocalUrl = URL.createObjectURL(vocalBlob);
-
-        status.innerHTML = `
-          <b style="color:#4ade80;">✓ Gesplitst!</b><br><br>
-          <b>🎤 Zang Spoor (Vocals):</b>
-          <audio controls src="${vocalUrl}"></audio>
-          <b>🎵 Muziek Spoor (Instrumental):</b>
-          <audio controls src="${musicUrl}"></audio>
-        `;
-
-      } catch (err) {
-        status.innerHTML = `<b style="color:#ef4444;">Fout:</b> Verwerking mislukt.`;
-      } finally {
-        btn.disabled = false;
-      }
-    }
-
-    function bufferToWave(abuffer, len) {
-      let numOfChan = abuffer.numberOfChannels,
-          length = len * numOfChan * 2 + 44,
-          buffer = new ArrayBuffer(length),
-          view = new DataView(buffer),
-          channels = [], i, sample, offset = 0, pos = 0;
-
-      function setUint16(data) { view.setUint16(pos, data, true); pos += 2; }
-      function setUint32(data) { view.setUint32(pos, data, true); pos += 4; }
-
-      setUint32(0x46464952); setUint32(length - 8); setUint32(0x45564157);
-      setUint32(0x20746d66); setUint32(16); setUint16(1); setUint16(numOfChan);
-      setUint32(abuffer.sampleRate); setUint32(abuffer.sampleRate * 2 * numOfChan);
-      setUint16(numOfChan * 2); setUint16(16); setUint32(0x61746164); setUint32(length - pos - 4);
-
-      for (i = 0; i < abuffer.numberOfChannels; i++) channels.push(abuffer.getChannelData(i));
-
-      while (pos < length) {
-        for (i = 0; i < numOfChan; i++) {
-          sample = Math.max(-1, Math.min(1, channels[i][offset]));
-          sample = (0.5 + sample < 0 ? sample * 32768 : sample * 32767) | 0;
-          view.setInt16(pos, sample, true); pos += 2;
-        }
-        offset++;
-      }
-      return new Blob([buffer], { type: "audio/wav" });
-    }
-
-    // --- Blok 3: LRCLIB API Integratie (Ondersteunt Spotify URLs & Fallback Search) ---
     async function fetchLyricsDirect() {
-      const rawInput = document.getElementById('lyricsQuery').value.trim();
+      const spotifyUrlInput = document.getElementById('spotifyUrl').value.trim();
+      const searchQueryInput = document.getElementById('searchQuery').value.trim();
+      const rawInput = spotifyUrlInput || searchQueryInput;
+
       const resultBox = document.getElementById('lyricsResult');
       const btn = document.getElementById('lyricsBtn');
 
       if (!rawInput) {
-        alert('Voer een artiest/nummer in of plak een Spotify link.');
+        alert('Plak eerst een Spotify link bij Stap 2 of vul een zoekterm in bij Stap 1.');
         return;
       }
 
       btn.disabled = true;
       resultBox.innerHTML = `<b style="color:#38bdf8;">⏳ Zoeken...</b> Songtekst wordt opgehaald.`;
 
-      // Maak Spotify link schoon en haal ID op
       const match = rawInput.match(/track\/([a-zA-Z0-9]+)/);
       const trackId = match ? match[1] : null;
 
       try {
         let item = null;
 
-        // Poging 1: Probeer via Spotify ID als het een link is
         if (trackId) {
           try {
             const res = await fetch(`https://lrclib.net/api/get-by-spotify-id/${trackId}`);
@@ -414,13 +242,12 @@ Plak een Spotify-link of voer een titel in om de songtekst direct op te halen.
             console.log("Spotify ID direct niet gevonden, overschakelen op Spotify metadata...");
           }
 
-          // Fallback als ID niet in LRCLIB staat: haal titel op via Spotify oEmbed
           if (!item || (!item.syncedLyrics && !item.plainLyrics)) {
             try {
               const metaRes = await fetch(`https://open.spotify.com/oembed?url=https://open.spotify.com/track/${trackId}`);
               if (metaRes.ok) {
                 const meta = await metaRes.json();
-                const cleanQuery = meta.title; // bijv. "Artiest - Nummer"
+                const cleanQuery = meta.title;
                 const searchRes = await fetch(`https://lrclib.net/api/search?q=${encodeURIComponent(cleanQuery)}`);
                 if (searchRes.ok) {
                   const searchData = await searchRes.json();
@@ -432,7 +259,6 @@ Plak een Spotify-link of voer een titel in om de songtekst direct op te halen.
             }
           }
         } else {
-          // Geen link: Zoek rechtstreeks op zoekterm
           const searchRes = await fetch(`https://lrclib.net/api/search?q=${encodeURIComponent(rawInput)}`);
           if (searchRes.ok) {
             const searchData = await searchRes.json();
