@@ -4,7 +4,6 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Spotisaver & AI MP3 Splitter</title>
-  <!-- JSZip Bibliotheek voor ZIP Export -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
   <style>
     * {
@@ -189,25 +188,34 @@
       display: none;
     }
 
-    /* Player & Sync Controls */
+    /* Dynamic Scrolling Player Display */
     .display-box {
       background: #090d16;
       border: 1px solid #1e293b;
       border-radius: 16px;
-      padding: 24px 16px;
-      text-align: center;
-      min-height: 120px;
-      display: flex;
-      justify-content: center;
-      align-items: center;
+      height: 160px;
+      overflow-y: auto;
+      padding: 60px 16px;
       margin-top: 14px;
+      scroll-behavior: smooth;
+      position: relative;
     }
 
-    .display-text {
+    .lyric-line {
+      font-size: 13px;
+      color: #475569;
+      padding: 6px 0;
+      text-align: center;
+      transition: all 0.2s ease-in-out;
+      opacity: 0.5;
+    }
+
+    .lyric-line.active {
+      color: #c084fc;
       font-size: 16px;
-      font-weight: 600;
-      color: #a78bfa;
-      line-height: 1.4;
+      font-weight: 700;
+      opacity: 1;
+      text-shadow: 0 0 12px rgba(192, 132, 252, 0.4);
     }
 
     .sync-card {
@@ -258,10 +266,9 @@
       cursor: pointer;
     }
 
-    .btn-preset.active {
+    .btn-preset:active {
       background: #8b5cf6;
       color: white;
-      border-color: #a78bfa;
     }
 
     .progress-row {
@@ -306,7 +313,6 @@
 </head>
 <body>
 
-  <!-- Blok 1: MP3, Splitter & Songtekst Acties -->
   <div class="container">
     <h1>MP3 & Tools</h1>
 
@@ -333,7 +339,6 @@
     </button>
   </div>
 
-  <!-- Blok 2: Songtekst Resultaat -->
   <div class="container">
     <h1>Songtekst</h1>
 
@@ -345,7 +350,6 @@ Plak een Spotify-link bovenaan bij Stap 2 of vul bij Stap 1 een zoekterm in en k
     </div>
   </div>
 
-  <!-- Blok 3: Export naar ZIP & Spelersync -->
   <div class="container">
     <h1>Export naar ZIP</h1>
 
@@ -354,7 +358,6 @@ Plak een Spotify-link bovenaan bij Stap 2 of vul bij Stap 1 een zoekterm in en k
       <button class="btn-action" style="background:#3b82f6;" onclick="exportZipPackage()">📥 Export ZIP</button>
     </div>
 
-    <!-- Muziek Spoor (A) -->
     <div class="track-picker-box">
       <div class="track-info">
         <div class="track-label" style="color: #38bdf8;">Muziek Spoor (Spoor A)</div>
@@ -364,7 +367,6 @@ Plak een Spotify-link bovenaan bij Stap 2 of vul bij Stap 1 een zoekterm in en k
       <input type="file" id="musicFileInput" class="hidden-input" accept="audio/*" onchange="handleFileSelect(event, 'music')">
     </div>
 
-    <!-- Zang Spoor (B) -->
     <div class="track-picker-box">
       <div class="track-info">
         <div class="track-label" style="color: #ec4899;">Zang Spoor (Spoor B)</div>
@@ -374,7 +376,6 @@ Plak een Spotify-link bovenaan bij Stap 2 of vul bij Stap 1 een zoekterm in en k
       <input type="file" id="vocalFileInput" class="hidden-input" accept="audio/*" onchange="handleFileSelect(event, 'vocal')">
     </div>
 
-    <!-- Karaoke Tekst (.LRC) -->
     <div class="track-picker-box">
       <div class="track-info">
         <div class="track-label" style="color: #a855f7;">Karaoke Tekst (.LRC)</div>
@@ -384,38 +385,36 @@ Plak een Spotify-link bovenaan bij Stap 2 of vul bij Stap 1 een zoekterm in en k
       <input type="file" id="lrcFileInput" class="hidden-input" accept=".lrc,.txt" onchange="handleFileSelect(event, 'lrc')">
     </div>
 
-    <!-- Display -->
-    <div class="display-box">
-      <div class="display-text" id="displaySubtitle">Kies je audio- en tekstbestanden om te starten...</div>
+    <div class="display-box" id="displayBox">
+      <div id="lyricsScrollContainer">
+        <div class="lyric-line active">Kies je audio- en tekstbestanden om te starten...</div>
+      </div>
     </div>
 
-    <!-- Synchronisatie Instellingen -->
     <div class="sync-card">
       <div class="sync-header">
         <span>⏱️ Tekst Vertraging (Tienden sec.):</span>
         <span class="sync-value" id="syncValueText">0.0s</span>
       </div>
-      <input type="range" id="syncSlider" class="slider" min="-2.0" max="2.0" step="0.1" value="0.0" oninput="updateSyncOffset(this.value)">
+      <input type="range" id="syncSlider" class="slider" min="-10.0" max="10.0" step="0.1" value="0.0" oninput="setSyncOffset(parseFloat(this.value))">
 
       <div class="preset-row">
-        <button class="btn-preset" onclick="setSyncOffset(-0.4)">-0.4s</button>
-        <button class="btn-preset" onclick="setSyncOffset(-0.2)">-0.2s</button>
-        <button class="btn-preset" onclick="setSyncOffset(-0.1)">-0.1s</button>
-        <button class="btn-preset active" id="btnZero" onclick="setSyncOffset(0.0)">0.0s</button>
-        <button class="btn-preset" onclick="setSyncOffset(0.1)">+0.1s</button>
-        <button class="btn-preset" onclick="setSyncOffset(0.2)">+0.2s</button>
-        <button class="btn-preset" onclick="setSyncOffset(0.4)">+0.4s</button>
+        <button class="btn-preset" onclick="adjustSyncOffset(-0.4)">-0.4s</button>
+        <button class="btn-preset" onclick="adjustSyncOffset(-0.2)">-0.2s</button>
+        <button class="btn-preset" onclick="adjustSyncOffset(-0.1)">-0.1s</button>
+        <button class="btn-preset" style="background:#dc2626; color:white;" onclick="setSyncOffset(0.0)">Reset</button>
+        <button class="btn-preset" onclick="adjustSyncOffset(0.1)">+0.1s</button>
+        <button class="btn-preset" onclick="adjustSyncOffset(0.2)">+0.2s</button>
+        <button class="btn-preset" onclick="adjustSyncOffset(0.4)">+0.4s</button>
       </div>
     </div>
 
-    <!-- Tijd balk -->
     <div class="progress-row">
       <span id="currentTimeText">00:00</span>
       <input type="range" id="progressBar" class="slider" min="0" max="100" value="0" oninput="seekAudio(this.value)">
       <span id="totalTimeText">00:00</span>
     </div>
 
-    <!-- Afspeelknoppen -->
     <div class="controls-row">
       <button class="btn-player btn-play" onclick="playAudio()">▶ Afspelen</button>
       <button class="btn-player btn-stop" onclick="stopAudio()">■ Stop</button>
@@ -430,6 +429,7 @@ Plak een Spotify-link bovenaan bij Stap 2 of vul bij Stap 1 een zoekterm in en k
     let currentFileName = "songtekst.lrc";
     let syncOffset = 0.0;
     let parsedLyrics = [];
+    let currentActiveIndex = -1;
 
     let selectedFiles = {
       music: null,
@@ -447,7 +447,7 @@ Plak een Spotify-link bovenaan bij Stap 2 of vul bij Stap 1 een zoekterm in en k
 
     async function pasteFromClipboard(inputId) {
       try {
-        const text = await navigator.clipboard.readText();
+        const text = await navigator.clipboard.text();
         if (text) document.getElementById(inputId).value = text;
       } catch (err) {
         alert('Plak handmatig.');
@@ -548,6 +548,7 @@ Plak een Spotify-link bovenaan bij Stap 2 of vul bij Stap 1 een zoekterm in en k
           document.getElementById('lrcFileName').style.color = "#ffffff";
 
           parseLrcContent(currentLyrics);
+          renderLyricsList();
 
           resultBox.innerHTML = `
             <b style="color:#4ade80;">✓ Gevonden!</b><br>
@@ -593,22 +594,22 @@ Plak een Spotify-link bovenaan bij Stap 2 of vul bij Stap 1 een zoekterm in en k
         reader.onload = (e) => {
           currentLyrics = e.target.result;
           parseLrcContent(currentLyrics);
+          renderLyricsList();
         };
         reader.readAsText(file);
       }
     }
 
-    // --- Sync & Player Logica ---
-    function updateSyncOffset(val) {
-      syncOffset = parseFloat(val);
-      document.getElementById('syncValueText').innerText = (syncOffset >= 0 ? '+' : '') + syncOffset.toFixed(1) + 's';
-      document.getElementById('syncSlider').value = syncOffset;
-
-      document.querySelectorAll('.btn-preset').forEach(b => b.classList.remove('active'));
+    // --- Cumulatieve Sync & Offset Logica ---
+    function adjustSyncOffset(delta) {
+      const newOffset = Math.round((syncOffset + delta) * 10) / 10;
+      setSyncOffset(newOffset);
     }
 
     function setSyncOffset(val) {
-      updateSyncOffset(val);
+      syncOffset = Math.max(-10.0, Math.min(10.0, val));
+      document.getElementById('syncValueText').innerText = (syncOffset >= 0 ? '+' : '') + syncOffset.toFixed(1) + 's';
+      document.getElementById('syncSlider').value = syncOffset;
     }
 
     function parseLrcContent(lrcText) {
@@ -630,6 +631,18 @@ Plak een Spotify-link bovenaan bij Stap 2 of vul bij Stap 1 een zoekterm in en k
         }
       });
       parsedLyrics.sort((a, b) => a.time - b.time);
+    }
+
+    function renderLyricsList() {
+      const container = document.getElementById('lyricsScrollContainer');
+      if (!parsedLyrics.length) {
+        container.innerHTML = '<div class="lyric-line active">Kies je audio- en tekstbestanden om te starten...</div>';
+        return;
+      }
+      container.innerHTML = parsedLyrics.map((item, index) => 
+        `<div class="lyric-line" id="lyric-line-${index}">${item.text}</div>`
+      ).join('');
+      currentActiveIndex = -1;
     }
 
     function applyOffsetToLrc(lrcText, offset) {
@@ -672,7 +685,6 @@ Plak een Spotify-link bovenaan bij Stap 2 of vul bij Stap 1 een zoekterm in en k
       audioMusic.currentTime = 0;
       audioVocal.pause();
       audioVocal.currentTime = 0;
-      document.getElementById('displaySubtitle').innerText = "Afspeel gestopt";
     }
 
     function seekAudio(percent) {
@@ -691,17 +703,30 @@ Plak een Spotify-link bovenaan bij Stap 2 of vul bij Stap 1 een zoekterm in en k
       document.getElementById('currentTimeText').innerText = formatTime(cur);
       document.getElementById('totalTimeText').innerText = formatTime(dur);
 
-      // Live tekstweergave rekening houdend met syncOffset
+      // Scroll en Highlight Sync
       const effectiveTime = cur - syncOffset;
-      let activeText = "...";
+      let activeIndex = -1;
+
       for (let i = 0; i < parsedLyrics.length; i++) {
         if (effectiveTime >= parsedLyrics[i].time) {
-          activeText = parsedLyrics[i].text;
+          activeIndex = i;
         } else {
           break;
         }
       }
-      document.getElementById('displaySubtitle').innerText = activeText;
+
+      if (activeIndex !== currentActiveIndex && activeIndex !== -1) {
+        currentActiveIndex = activeIndex;
+
+        document.querySelectorAll('.lyric-line').forEach((el, idx) => {
+          if (idx === activeIndex) {
+            el.classList.add('active');
+            el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          } else {
+            el.classList.remove('active');
+          }
+        });
+      }
     };
 
     function formatTime(sec) {
@@ -710,7 +735,6 @@ Plak een Spotify-link bovenaan bij Stap 2 of vul bij Stap 1 een zoekterm in en k
       return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
     }
 
-    // --- Export Functie Met Volledige Controle ---
     async function exportZipPackage() {
       let missing = [];
       if (!selectedFiles.music) missing.push("Muziek Spoor (Spoor A)");
@@ -728,7 +752,6 @@ Plak een Spotify-link bovenaan bij Stap 2 of vul bij Stap 1 een zoekterm in en k
       zip.file(`music_${selectedFiles.music.name}`, selectedFiles.music);
       zip.file(`vocal_${selectedFiles.vocal.name}`, selectedFiles.vocal);
 
-      // Pas de offset direct toe op het LRC-bestand bij export
       const finalLrcContent = applyOffsetToLrc(currentLyrics, syncOffset);
       const lrcName = selectedFiles.lrc ? selectedFiles.lrc.name : currentFileName;
       zip.file(`lyrics_${lrcName}`, finalLrcContent);
