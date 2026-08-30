@@ -419,11 +419,11 @@ Plak een Spotify-link bovenaan bij Stap 2 of vul bij Stap 1 een zoekterm in en k
   <div class="container">
     <h1>Export & Import</h1>
 
-    <!-- Import Knop -->
+    <!-- Import Knop (Ondersteunt .kar en .zip) -->
     <button class="btn-import" onclick="triggerImport()">
       📂 Importeer KAR / ZIP Pakket
     </button>
-    <input type="file" id="zipImportInput" class="hidden-input" accept=".kar,.zip" onchange="importZipPackage(event)">
+    <input type="file" id="zipImportInput" class="hidden-input" accept=".kar,.zip,application/zip,application/x-zip-compressed" onchange="importZipPackage(event)">
 
     <div class="input-row" style="margin-bottom: 14px;">
       <input type="text" id="packageName" placeholder="Pakketnaam...">
@@ -806,9 +806,17 @@ Plak een Spotify-link bovenaan bij Stap 2 of vul bij Stap 1 een zoekterm in en k
 
       try {
         const rawBuffer = await file.arrayBuffer();
-        const decryptedBuffer = scrambleBuffer(rawBuffer, APP_SECRET_KEY);
+        let zip = null;
 
-        const zip = await JSZip.loadAsync(decryptedBuffer);
+        // Probeer eerst te laden als een standaard ZIP (ongecodeerd)
+        try {
+          zip = await JSZip.loadAsync(rawBuffer);
+        } catch (e) {
+          // Mocht dit mislukken, probeer de XOR decryptie te gebruiken (voor .kar bestanden)
+          const decryptedBuffer = scrambleBuffer(rawBuffer.slice(0), APP_SECRET_KEY);
+          zip = await JSZip.loadAsync(decryptedBuffer);
+        }
+
         document.getElementById('packageName').value = file.name.replace(/\.(kar|zip)$/i, '');
 
         zip.forEach(async (relativePath, zipEntry) => {
@@ -847,7 +855,7 @@ Plak een Spotify-link bovenaan bij Stap 2 of vul bij Stap 1 een zoekterm in en k
           }
         });
       } catch (e) {
-        alert("Fout bij het openen van het bestand! Dit is geen geldig of ondersteund .kar pakket.");
+        alert("Fout bij het openen van het bestand! Dit is geen geldig of ondersteund .zip of .kar pakket.");
       }
     }
 
