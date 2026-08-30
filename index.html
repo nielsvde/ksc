@@ -235,30 +235,56 @@ Plak een Spotify-link bovenaan bij Stap 2 of vul bij Stap 1 een zoekterm in en k
         let item = null;
 
         if (trackId) {
+          // 1. Probeer op direct Spotify ID
           try {
             const res = await fetch(`https://lrclib.net/api/get-by-spotify-id/${trackId}`);
             if (res.ok) item = await res.json();
-          } catch (e) {
-            console.log("Spotify ID direct niet gevonden, overschakelen op Spotify metadata...");
-          }
+          } catch (e) {}
 
+          // 2. Als direct ID niet werkt, haal Spotify OEmbed metadata op en zoek gericht op Artiest + Nummer
           if (!item || (!item.syncedLyrics && !item.plainLyrics)) {
             try {
               const metaRes = await fetch(`https://open.spotify.com/oembed?url=https://open.spotify.com/track/${trackId}`);
               if (metaRes.ok) {
                 const meta = await metaRes.json();
-                const cleanQuery = meta.title;
-                const searchRes = await fetch(`https://lrclib.net/api/search?q=${encodeURIComponent(cleanQuery)}`);
+                
+                // Spotify oEmbed geeft title in formaat "Nummer - song door Artiest" of "Nummer door Artiest"
+                let title = meta.title || "";
+                let artistName = "";
+                let trackName = title;
+
+                if (title.includes(" door ")) {
+                  const parts = title.split(" door ");
+                  trackName = parts[0].trim();
+                  artistName = parts[1].trim();
+                } else if (title.includes(" by ")) {
+                  const parts = title.split(" by ");
+                  trackName = parts[0].trim();
+                  artistName = parts[1].trim();
+                }
+
+                // Schoon de titel op (verwijder extra haakjes zoals (Remastered), - Radio Edit, etc.)
+                const cleanTrackName = trackName.replace(/\s*[\(\-].*$/, '').trim();
+
+                // Zoek heel specifiek op track_name en artist_name
+                let searchUrl = `https://lrclib.net/api/search?track_name=${encodeURIComponent(cleanTrackName)}`;
+                if (artistName) searchUrl += `&artist_name=${encodeURIComponent(artistName)}`;
+
+                const searchRes = await fetch(searchUrl);
                 if (searchRes.ok) {
                   const searchData = await searchRes.json();
-                  if (searchData && searchData.length > 0) item = searchData[0];
+                  if (searchData && searchData.length > 0) {
+                    // Pak het eerste/meest accurate resultaat
+                    item = searchData[0];
+                  }
                 }
               }
             } catch (e) {
-              console.log("Fallback mislukt");
+              console.log("Metadata fallback mislukt", e);
             }
           }
         } else {
+          // Zoekopdracht op basis van losse tekst
           const searchRes = await fetch(`https://lrclib.net/api/search?q=${encodeURIComponent(rawInput)}`);
           if (searchRes.ok) {
             const searchData = await searchRes.json();
@@ -279,7 +305,7 @@ Plak een Spotify-link bovenaan bij Stap 2 of vul bij Stap 1 een zoekterm in en k
             <div style="font-family: monospace; font-size: 11px; white-space: pre-wrap;">${currentLyrics}</div>
           `;
         } else {
-          resultBox.innerHTML = `<b style="color:#ef4444;">Niet gevonden:</b> Geen songtekst aangetroffen in de database voor deze track.`;
+          resultBox.innerHTML = `<b style="color:#ef4444;">Niet gevonden:</b> Geen exacte songtekst aangetroffen in de database voor deze track.`;
         }
       } catch (err) {
         resultBox.innerHTML = `<b style="color:#ef4444;">Fout:</b> Er ging iets mis bij het ophalen van de songtekst.`;
