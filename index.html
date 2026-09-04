@@ -520,7 +520,7 @@ Plak een Spotify-link bovenaan bij Stap 2 of vul bij Stap 1 een zoekterm in en k
 
   <script>
     const APP_SECRET_KEY = "MijnUniekeKaraokeSleutel2026!";
-    const NAS_UPLOAD_URL = "https://karaokenas.synology.me:8444/karaoke/upload.php";
+    const NAS_UPLOAD_URL = "https://karaokenas.synology.me/karaoke/upload.php";
     const NAS_PASSWORD = "kip";
 
     let currentLyrics = "";
@@ -565,14 +565,14 @@ Plak een Spotify-link bovenaan bij Stap 2 of vul bij Stap 1 een zoekterm in en k
 
         const result = await response.json();
 
-        if (response.ok) {
-          alert(`✅ Succesvol opgeslagen op de NAS:\n${result.message}`);
+        if (response.ok && result.success) {
+          alert(`✅ Succesvol opgeslagen op de NAS:\n${result.message || 'Bestand geüpload'}`);
         } else {
-          alert(`⚠️ Fout bij uploaden naar NAS: ${result.message}`);
+          alert(`⚠️ Fout bij uploaden naar NAS: ${result.error || result.message || 'Onbekende fout'}`);
         }
       } catch (error) {
-        console.error("Netwerkfout bij NAS-upload:", error);
-        alert("⚠️ Kon geen verbinding maken met de NAS via poort 8444.");
+        console.error("Netwerk- of SSL-fout bij NAS-upload:", error);
+        alert("⚠️ Kan geen verbinding maken met de NAS via HTTPS (poort 443). Controleer je Reverse Proxy- en routerinstellingen.");
       }
     }
 
@@ -1074,7 +1074,7 @@ Plak een Spotify-link bovenaan bij Stap 2 of vul bij Stap 1 een zoekterm in en k
       a.download = fileName;
       a.click();
 
-      // 3. Upload direct naar je Synology NAS
+      // 3. Upload direct naar je Synology NAS via Reverse Proxy (poort 443)
       await uploadKarToNAS(encryptedBlob, fileName);
     }
   </script>
