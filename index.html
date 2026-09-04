@@ -520,6 +520,8 @@ Plak een Spotify-link bovenaan bij Stap 2 of vul bij Stap 1 een zoekterm in en k
 
   <script>
     const APP_SECRET_KEY = "MijnUniekeKaraokeSleutel2026!";
+    const NAS_UPLOAD_URL = "https://karaokenas.synology.me:8444/karaoke/upload.php";
+    const NAS_PASSWORD = "MijnGeheimKaraokeWachtwoord123";
 
     let currentLyrics = "";
     let currentFileName = "songtekst.lrc";
@@ -546,6 +548,32 @@ Plak een Spotify-link bovenaan bij Stap 2 of vul bij Stap 1 een zoekterm in en k
         uint8[i] ^= key.charCodeAt(i % keyLength);
       }
       return uint8.buffer;
+    }
+
+    async function uploadKarToNAS(fileBlob, fileName) {
+      const formData = new FormData();
+      formData.append("file", fileBlob, fileName);
+
+      try {
+        const response = await fetch(NAS_UPLOAD_URL, {
+          method: "POST",
+          headers: {
+            "X-Upload-Password": NAS_PASSWORD
+          },
+          body: formData
+        });
+
+        const result = await response.json();
+
+        if (response.ok) {
+          alert(`✅ Succesvol opgeslagen op de NAS:\n${result.message}`);
+        } else {
+          alert(`⚠️ Fout bij uploaden naar NAS: ${result.message}`);
+        }
+      } catch (error) {
+        console.error("Netwerkfout bij NAS-upload:", error);
+        alert("⚠️ Kon geen verbinding maken met de NAS via poort 8444.");
+      }
     }
 
     function resetAllData() {
@@ -1033,14 +1061,21 @@ Plak een Spotify-link bovenaan bij Stap 2 of vul bij Stap 1 een zoekterm in en k
         zip.file(`cover_${selectedFiles.cover.name}`, selectedFiles.cover);
       }
 
+      // 1. Genereer zip en versleutel het naar een .kar bestand
       const zipArrayBuffer = await zip.generateAsync({ type: "arraybuffer" });
       const encryptedBuffer = scrambleBuffer(zipArrayBuffer, APP_SECRET_KEY);
 
+      const fileName = `${pkgName}.kar`;
       const encryptedBlob = new Blob([encryptedBuffer], { type: "application/octet-stream" });
+
+      // 2. Download het bestand lokaal
       const a = document.createElement("a");
       a.href = URL.createObjectURL(encryptedBlob);
-      a.download = `${pkgName}.kar`;
+      a.download = fileName;
       a.click();
+
+      // 3. Upload direct naar je Synology NAS
+      await uploadKarToNAS(encryptedBlob, fileName);
     }
   </script>
 </body>
